@@ -1,6 +1,8 @@
 #include "main.h"
+#include "Model.hpp"
 #include <GLFW/glfw3.h>
 #include <math.h>
+
 #define BUFFER_SIZE 1024
 #define WIDTH 800
 #define HEIGHT 640
@@ -22,6 +24,8 @@ void initLog()
 int createWindow(GLFWwindow** window);
 int configOpenGL();
 int run(GLFWwindow* window);
+int noInstance(GLFWwindow* window);
+int instanced(GLFWwindow* window);
 void processInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
@@ -46,47 +50,30 @@ int main(int argc, char** argv)
 
 int run(GLFWwindow* window)
 {
-    Shader shader("res\\vertex.glsl", "res\\fragmentLit.glsl");
-    Shader shaderLight("res\\vertex.glsl", "res\\fragmentLight.glsl");
+    return instanced(window);
+    //return noInstance(window);
+}
+
+int instanced(GLFWwindow* window)
+{
+    // SHADER
+    Shader shader("res\\vertexInstanced.glsl", "res\\fragment.glsl");
+    shader.bind();
+    shader.setInt("diffuse", 0);
+
+    // MODEL
     Texture tireTex("res\\Tire_df.png");
     Texture rimTex("res\\Rim_df.png");
-    Texture tireTexS("res\\Tire_sp.png");
-    Texture whiteTex("res\\white.bmp");
-    Material tireMat = { &tireTex, &tireTexS, 5 };
-    Material rimMat = { &rimTex, &whiteTex, 256 };
+    Material tireMat = { &tireTex, nullptr, 5 };
+    Material rimMat = { &rimTex, nullptr, 256 };
     std::vector<Material> materials = { tireMat, rimMat };
-    Model model("res\\wheel.obj", &materials);
-    Model cubeLight("res\\cube.obj");
+    ModelInstanced model("res\\wheel.obj", &materials);
 
-    glm::vec3 cubePositions[] = {
-        glm::vec3(0.0f,  0.0f,  0.0f),
-        glm::vec3(2.0f,  5.0f, -15.0f),
-        glm::vec3(-1.5f, -2.2f, -2.5f),
-        glm::vec3(-3.8f, -2.0f, -12.3f),
-        glm::vec3(2.4f, -0.4f, -3.5f),
-        glm::vec3(-1.7f,  3.0f, -7.5f),
-        glm::vec3(1.3f, -2.0f, -2.5f),
-        glm::vec3(1.5f,  2.0f, -2.5f),
-        glm::vec3(1.5f,  0.2f, -1.5f),
-        glm::vec3(-1.3f,  1.0f, -1.5f)
-    };
-
-    // LIGHTS POSITIONS
-    glm::vec3 sunDir(0.0f, -1.0f, -1.0f);
-    glm::vec3 pointLightPos[] = {
-        glm::vec3( 0.7f,  0.2f,  2.0f),
-        glm::vec3( 2.3f, -3.3f, -4.0f),
-        glm::vec3(-4.0f,  2.0f, -12.0f),
-        glm::vec3( 0.0f,  0.0f,  -3.0f)
-    };
-
+    
     // 2 draw calls per wheels so total draw calls = wheelsCount * 2 + 4 (cubeLights)
-    const uint32 wheelsCount = 300;
-    
-    
-    glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float) WIDTH / HEIGHT, 0.1f, 100.0f);
-    glm::mat4 scaleMat = glm::scale(glm::vec3(.3f, .3f, .3f));
-    glm::mat4 pointScaMat = glm::scale(glm::vec3(.1f, .1f, .1f));
+    const uint32 wheelsCount = 256;
+
+    glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
     
     std::vector<glm::mat4> transforms;
     for (unsigned int i = 0; i < wheelsCount; i++)
@@ -98,7 +85,80 @@ int run(GLFWwindow* window)
             rand() % 20
         );
         glm::mat4 modelMat = glm::translate(locVect)
-            * glm::rotate(glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f)) * scaleMat;
+            * glm::rotate(glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+
+        transforms.push_back(modelMat);
+    }
+
+
+    // Set clear color
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    std::cout.flush();
+    while (!glfwWindowShouldClose(window))
+    {
+        // TIME
+        float currentFrame = (float)glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+        std::cout << deltaTime * 1000 << "ms" << std::endl;
+        // Logic
+        glm::mat4 PVmat = perspective * cam.GetViewMatrix();
+        camPos = cam.Position;
+
+        // RENDER CALLS OR CODE
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        shader.bind();
+        shader.setVec4f("viewPos", camPos.x, camPos.y, camPos.z);
+
+        for (unsigned int i = 0; i < wheelsCount; i++)
+        {
+            glm::mat4 modelMat = transforms[i];
+            glm::mat4 transform = PVmat * modelMat;
+            std::string index = std::to_string(i);
+            shader.setMat4f(("transforms[" + index + "]").c_str(), transform);
+        }
+        model.draw(shader, wheelsCount);
+
+        // Render the frame
+        glfwSwapBuffers(window);
+        // get the events
+        glfwPollEvents();
+        processInput(window);
+    }
+
+    return 0;
+}
+
+int noInstance(GLFWwindow* window)
+{
+    Shader shader("res\\vertex.glsl", "res\\fragment.glsl");
+    Texture tireTex("res\\Tire_df.png");
+    Texture rimTex("res\\Rim_df.png");
+    Texture tireTexS("res\\Tire_sp.png");
+    Material tireMat = { &tireTex, nullptr, 5 };
+    Material rimMat = { &rimTex, nullptr, 256 };
+    std::vector<Material> materials = { tireMat, rimMat };
+    Model model("res\\wheel.obj", &materials);
+
+    
+    // 2 draw calls per wheels so total draw calls = wheelsCount * 2 + 4 (cubeLights)
+    const uint32 wheelsCount = 256;
+
+
+    glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
+
+    std::vector<glm::mat4> transforms;
+    for (unsigned int i = 0; i < wheelsCount; i++)
+    {
+        float angle = 20.0f * i;
+        glm::vec3 locVect = glm::vec3(
+            rand() % 20 - 10.0f,
+            rand() % 20 - 10.0f,
+            rand() % 20
+        );
+        glm::mat4 modelMat = glm::translate(locVect)
+            * glm::rotate(glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
 
         transforms.push_back(modelMat);
     }
@@ -111,50 +171,25 @@ int run(GLFWwindow* window)
     // Set Materials
     // bind the uniforms to the active unit texture (0 and 1 respectively)
     shader.setInt("material.diffuseTex", 0);
-    shader.setInt("material.specular", 1);
- 
-    // Set sun light
-    shader.setVec4f("sun.ambient", .2f, .2f, .2f);
-    shader.setVec4f("sun.diffuse");
-    shader.setVec4f("sun.specular");
-    shader.setVec4f("sun.direction", sunDir.x, sunDir.y, sunDir.z, 0);
 
-    /*
-    // Set point lights
-    for (uint32 i = 0; i < 4; i++)
-    {
-        shader.setVec4f(("pointLights[" + std::to_string(i) + "].position").c_str(), pointLightPos[i].x, pointLightPos[i].y, pointLightPos[i].z);
-        shader.setVec4f(("pointLights[" + std::to_string(i) + "].diffuse").c_str(), .2f * i, .2f, 1.0f / (4-i));
-        shader.setVec4f(("pointLights[" + std::to_string(i) + "].specular").c_str());
-        shader.setVec4f(("pointLights[" + std::to_string(i) + "].ambient").c_str(), .0f, .0f, .0f);
-        shader.setFloat(("pointLights[" + std::to_string(i) + "].constant").c_str(), 1);
-        shader.setFloat(("pointLights[" + std::to_string(i) + "].linear").c_str(), .09);
-        shader.setFloat(("pointLights[" + std::to_string(i) + "].quadratic").c_str(), .032);
-    }
-    */
-
-    // Set lights objects color
-    shaderLight.bind();
-    shaderLight.setVec4f("ourColor");
-
-
+    
     // Set clear color
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
     while (!glfwWindowShouldClose(window))
     {
         // TIME
-        float currentFrame = (float) glfwGetTime();
+        float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-        std::cout << deltaTime * 1000 << "ms\n";
+        std::cout << deltaTime * 1000 << "ms" << std::endl;
         // Logic
         glm::mat4 PVmat = perspective * cam.GetViewMatrix();
-        
+
         // RENDER CALLS OR CODE
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
-        
+
+
         shader.bind();
         camPos = cam.Position;
         shader.setVec4f("viewPos", camPos.x, camPos.y, camPos.z);
@@ -170,22 +205,11 @@ int run(GLFWwindow* window)
             model.draw(shader);
         }
 
-        shaderLight.bind();
-        for (uint32 i = 0; i < 4; i++)
-        {
-            glm::mat4 transform1 = PVmat * (glm::translate(pointLightPos[i]) * pointScaMat);
-            shaderLight.setMat4f("transform", transform1);
-            cubeLight.draw(shaderLight);
-        }
-        
-        
         // Render the frame
         glfwSwapBuffers(window);
         // get the events
         glfwPollEvents();
         processInput(window);
-        // flush cout msgs
-        std::cout.flush();
     }
     return 0;
 }
@@ -248,8 +272,10 @@ int createWindow(GLFWwindow** window)
 
 
     glfwSetCursorPosCallback(*window, mouse_callback);
+    // if not set to disable camera doesnt work well
     glfwSetInputMode(*window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
+    // 0 = disable vsync
+    glfwSwapInterval(0);
     return 0;
 }
 
