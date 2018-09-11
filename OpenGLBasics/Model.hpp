@@ -180,17 +180,20 @@ class MeshInstanced
     uint32 VAO; // Vertex Array Object
     uint32 VBO; // Vertex Buffer Object
     uint32 EBO; // Elements Buffer Object
+    uint32 IBO; // Instance Buffer Object
+    bool m_init;
 public:
     std::vector<Vertex> vertices;
     std::vector<uint32> indices;
 public:
     MeshInstanced(const std::vector<Vertex>& nVertices, const std::vector<uint32>& nIndices)
-        : vertices(nVertices), indices(nIndices)
+        : vertices(nVertices), indices(nIndices), m_init(false)
     {
         // Generate the buffers
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glGenBuffers(1, &EBO);
+        glGenBuffers(1, &IBO);
 
         // Bind the Array Object
         glBindVertexArray(VAO);
@@ -214,19 +217,58 @@ public:
         // Set the atribute pointers
         // vertex positions
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
         // vertex normals
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
         // vertex texture coords
         glEnableVertexAttribArray(2);
+
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uvCoord));
+
+        // Transform attribute
+        /*
+        Since glVertexAttribPointer works on the binded buffer we most not forget to bind the buffer
+        */
+        glBindBuffer(GL_ARRAY_BUFFER, IBO);
+
+        // Enable the vertex attributes
+        int attribLocation = 3;
+        glEnableVertexAttribArray(attribLocation + 0);
+        glEnableVertexAttribArray(attribLocation + 1);
+        glEnableVertexAttribArray(attribLocation + 2);
+        glEnableVertexAttribArray(attribLocation + 3);
+        // Set the buffer layout
+        glVertexAttribPointer(attribLocation + 0, 4, GL_FLOAT, GL_FALSE, 16 * sizeof(float) * 4, (void*)0);
+        glVertexAttribPointer(attribLocation + 1, 4, GL_FLOAT, GL_FALSE, 16 * sizeof(float) * 4, (void*)(sizeof(float) * 4));
+        glVertexAttribPointer(attribLocation + 2, 4, GL_FLOAT, GL_FALSE, 16 * sizeof(float) * 4, (void*)(sizeof(float) * 4 * 2));
+        glVertexAttribPointer(attribLocation + 3, 4, GL_FLOAT, GL_FALSE, 16 * sizeof(float) * 4, (void*)(sizeof(float) * 4 * 3));
+        // Set the attributes per instance
+        glVertexAttribDivisor(attribLocation + 0, 1);
+        glVertexAttribDivisor(attribLocation + 1, 1);
+        glVertexAttribDivisor(attribLocation + 2, 1);
+        glVertexAttribDivisor(attribLocation + 3, 1);
     }
 
-    void draw(Shader& shader, const uint32 count)
+    void draw(const uint32 count) const
     {
         glBindVertexArray(VAO);
         glDrawElementsInstanced(GL_TRIANGLES, (uint32)indices.size(), GL_UNSIGNED_INT, NULL, count);
+    }
+
+    void setTransforms(const uint32 count, const glm::mat4* matrices)
+    {
+        glBindBuffer(GL_ARRAY_BUFFER, IBO);
+        int currentSize;
+        int size = count * 16 * sizeof(float);
+        // get the binded buffer size
+        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &currentSize);
+
+        if (currentSize < size)
+            glBufferData(GL_ARRAY_BUFFER, size, matrices, GL_DYNAMIC_DRAW);
+        else
+            glBufferSubData(GL_ARRAY_BUFFER, 0,  size, matrices);
     }
 };
 
@@ -249,15 +291,27 @@ public:
             {
                 if ((*materials)[i].diffuse)
                     (*materials)[i].diffuse->bind(0);
-                meshes[i].draw(shader, count);
+                meshes[i].draw(count);
             }
         else
             for (uint32 i = 0; i < meshes.size(); i++)
             {
-                meshes[i].draw(shader, count);
+                meshes[i].draw(count);
             }
     }
 
+    void setTransforms(const uint32 count, const glm::mat4* matrices)
+    {
+        for (auto mesh : meshes)
+        {
+            mesh.setTransforms(count, matrices);
+        }
+    }
+
+    MeshInstanced& getMesh(const uint32 index)
+    {
+        return meshes[index];
+    }
 private:
     void loadModel(const std::string& path)
     {
