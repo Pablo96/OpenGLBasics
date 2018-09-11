@@ -25,6 +25,7 @@ int createWindow(GLFWwindow** window);
 int configOpenGL();
 int run(GLFWwindow* window);
 int noInstance(GLFWwindow* window);
+int instancedUniform(GLFWwindow* window);
 int instanced(GLFWwindow* window);
 void processInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -57,20 +58,100 @@ int run(GLFWwindow* window)
 int instanced(GLFWwindow* window)
 {
     // SHADER
-    Shader shader("res\\vertexInstanced.glsl", "res\\fragment.glsl");
+    Shader shader("res\\Shaders\\vertexInstanced.glsl", "res\\Shaders\\fragment.glsl");
     shader.bind();
     shader.setInt("diffuse", 0);
 
     // MODEL
-    Texture tireTex("res\\Tire_df.png");
-    Texture rimTex("res\\Rim_df.png");
+    Texture tireTex("res\\Textures\\Tire_df.png");
+    Texture rimTex("res\\Textures\\Rim_df.png");
     Material tireMat = { &tireTex, nullptr, 5 };
     Material rimMat = { &rimTex, nullptr, 256 };
     std::vector<Material> materials = { tireMat, rimMat };
-    ModelInstanced model("res\\wheel.obj", &materials);
+    ModelInstanced model("res\\Models\\wheel.obj", &materials);
 
-    
-    // 2 draw calls per wheels so total draw calls = wheelsCount * 2 + 4 (cubeLights)
+    // when instanced is 2 drawcalls 1 per mesh
+    const uint32 wheelsCount = 2000;
+
+    glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
+    glm::mat4 PVmat = perspective * cam.GetViewMatrix();
+
+    std::vector<glm::mat4> modelMats;
+    modelMats.reserve(wheelsCount);
+    for (unsigned int i = 0; i < wheelsCount; i++)
+    {
+        float angle = 20.0f * i;
+        glm::vec3 locVect = glm::vec3(
+            rand() % 20 - 10.0f,
+            rand() % 20 - 10.0f,
+            rand() % 20
+        );
+        glm::mat4 modelMat = glm::translate(locVect)
+            * glm::rotate(glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+
+        modelMats.push_back(modelMat);
+    }
+    std::vector<glm::mat4> transforms;
+    transforms.reserve(wheelsCount);
+    for (unsigned int i = 0; i < wheelsCount; i++)
+    {
+        transforms.push_back(PVmat * modelMats[i]);
+    }
+
+
+    // Set clear color
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    std::cout.flush();
+    while (!glfwWindowShouldClose(window))
+    {
+        // TIME
+        float currentFrame = (float)glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+        std::cout << deltaTime * 1000 << "ms" << std::endl;
+        // Logic
+        PVmat = perspective * cam.GetViewMatrix();
+        camPos = cam.Position;
+
+        // RENDER CALLS OR CODE
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        rimTex.bind(0);
+        shader.bind();
+        shader.setVec4f("viewPos", camPos.x, camPos.y, camPos.z);
+
+        for (unsigned int i = 0; i < wheelsCount; i++)
+        {
+            transforms[i] = PVmat * modelMats[i];
+        }
+        model.setTransforms(transforms.size(), transforms.data());
+        model.draw(shader, wheelsCount);
+        // Render the frame
+        glfwSwapBuffers(window);
+        // get the events
+        glfwPollEvents();
+        processInput(window);
+    }
+
+    return 0;
+}
+
+int instancedUniform(GLFWwindow* window)
+{
+    // SHADER
+    Shader shader("res\\Shaders\\vertexInstancedUniform.glsl", "res\\Shaders\\fragment.glsl");
+    shader.bind();
+    shader.setInt("diffuse", 0);
+
+    // MODEL
+    Texture tireTex("res\\Textures\\Tire_df.png");
+    Texture rimTex("res\\Textures\\Rim_df.png");
+    Material tireMat = { &tireTex, nullptr, 5 };
+    Material rimMat = { &rimTex, nullptr, 256 };
+    std::vector<Material> materials = { tireMat, rimMat };
+    ModelInstanced model("res\\Models\\wheel.obj", &materials);
+
+    // when instanced is 2 drawcalls 1 per mesh
     const uint32 wheelsCount = 256;
 
     glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
@@ -132,18 +213,24 @@ int instanced(GLFWwindow* window)
 
 int noInstance(GLFWwindow* window)
 {
-    Shader shader("res\\vertex.glsl", "res\\fragment.glsl");
-    Texture tireTex("res\\Tire_df.png");
-    Texture rimTex("res\\Rim_df.png");
-    Texture tireTexS("res\\Tire_sp.png");
+    // SHADER
+    Shader shader("res\\Shaders\\vertex.glsl", "res\\Shaders\\fragment.glsl");
+    shader.bind();
+    // Set Materials
+    // bind the uniforms to the active unit texture (0 and 1 respectively)
+    shader.setInt("material.diffuseTex", 0);
+
+    // MODEL
+    Texture tireTex("res\\Textures\\Tire_df.png");
+    Texture rimTex("res\\Textures\\Rim_df.png");
     Material tireMat = { &tireTex, nullptr, 5 };
     Material rimMat = { &rimTex, nullptr, 256 };
     std::vector<Material> materials = { tireMat, rimMat };
-    Model model("res\\wheel.obj", &materials);
+    Model model("res\\Models\\wheel.obj", &materials);
 
     
     // 2 draw calls per wheels so total draw calls = wheelsCount * 2 + 4 (cubeLights)
-    const uint32 wheelsCount = 256;
+    const uint32 wheelsCount = 500;
 
 
     glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
@@ -166,11 +253,6 @@ int noInstance(GLFWwindow* window)
 
 
 
-    // Remember to bind the shader befor set the uniforms
-    shader.bind();
-    // Set Materials
-    // bind the uniforms to the active unit texture (0 and 1 respectively)
-    shader.setInt("material.diffuseTex", 0);
 
     
     // Set clear color
@@ -202,6 +284,7 @@ int noInstance(GLFWwindow* window)
             shader.setMat3f("normalMat", normalMat);
             shader.setMat3f("model", modelMat);
             shader.setMat4f("transform", transform);
+            // We are doing wheelsCount times draw call
             model.draw(shader);
         }
 
