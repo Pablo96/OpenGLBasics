@@ -7,8 +7,8 @@
 #define WIDTH 800
 #define HEIGHT 640
 
-glm::vec3 camPos(20.0f, -34.0f, -20.0f);
-Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 125, 46);
+glm::vec3 camPos(12, 4.0f, -5.0f);
+Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 155, -14);
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 // timing
@@ -57,47 +57,36 @@ int run(GLFWwindow* window)
 
 int instanced(GLFWwindow* window)
 {
+    glm::vec3 sunDir(-1, -1, -1);
     // SHADER
-    Shader shader("res\\Shaders\\vertexInstanced.glsl", "res\\Shaders\\fragment.glsl");
+    Shader shader("res\\Shaders\\vertexInstanced.glsl", "res\\Shaders\\fragment_lit.glsl");
     shader.bind();
     shader.setInt("diffuse", 0);
+    /*
+    shader.setInt("material.diffuse", 0);
+    shader.setInt("material.specular", 1);
+    shader.setInt("material.shininess", 32);
+    shader.setVec4f("sun.direction", sunDir.x, sunDir.y, sunDir.z, 0);
+    shader.setVec4f("sun.ambient");
+    shader.setVec4f("sun.diffuse");
+    shader.setVec4f("sun.specular");
+    */
 
     // MODEL
-    Texture tireTex("res\\Textures\\Tire_df.png");
-    Texture rimTex("res\\Textures\\Rim_df.png");
-    Material tireMat = { &tireTex, nullptr, 5 };
-    Material rimMat = { &rimTex, nullptr, 256 };
-    std::vector<Material> materials = { tireMat, rimMat };
-    ModelInstanced model("res\\Models\\wheel.obj", &materials);
+    Texture crateTexD("res\\Textures\\container2.png");
+    Texture crateTexS("res\\Textures\\container2_specular.png");
+    Material crateMat = { &crateTexD, &crateTexS, 5 };
+    std::vector<Material> materials = { crateMat };
+    ModelInstanced model("res\\Models\\cube_flat.obj", &materials);
 
-    // when instanced is 2 drawcalls 1 per mesh
-    const uint32 wheelsCount = 2000;
+    // when instanced is 2 drawcalls 1 per mesh (wheel)
+    const uint32 wheelsCount = 1;
 
     glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
     glm::mat4 PVmat = perspective * cam.GetViewMatrix();
-
-    std::vector<glm::mat4> modelMats;
-    modelMats.reserve(wheelsCount);
-    for (unsigned int i = 0; i < wheelsCount; i++)
-    {
-        float angle = 20.0f * i;
-        glm::vec3 locVect = glm::vec3(
-            rand() % 20 - 10.0f,
-            rand() % 20 - 10.0f,
-            rand() % 20
-        );
-        glm::mat4 modelMat = glm::translate(locVect)
-            * glm::rotate(glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-
-        modelMats.push_back(modelMat);
-    }
-    std::vector<glm::mat4> transforms;
-    transforms.reserve(wheelsCount);
-    for (unsigned int i = 0; i < wheelsCount; i++)
-    {
-        transforms.push_back(PVmat * modelMats[i]);
-    }
-
+    glm::mat4 modelMat = glm::mat4(1.0f);
+    glm::mat3 normalMat = glm::transpose(glm::inverse(glm::mat3(modelMat)));
+    glm::mat4 transform = PVmat * modelMat;
 
     // Set clear color
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -112,20 +101,20 @@ int instanced(GLFWwindow* window)
         // Logic
         PVmat = perspective * cam.GetViewMatrix();
         camPos = cam.Position;
+        transform = PVmat * modelMat;
 
         // RENDER CALLS OR CODE
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        rimTex.bind(0);
         shader.bind();
         shader.setVec4f("viewPos", camPos.x, camPos.y, camPos.z);
 
-        for (unsigned int i = 0; i < wheelsCount; i++)
-        {
-            transforms[i] = PVmat * modelMats[i];
-        }
-        model.setTransforms(transforms.size(), transforms.data());
+        model.setTransforms(1, &transform, 0);
+        model.setTransforms(1, &modelMat, 1);
+        model.setTransforms(1, &normalMat);
         model.draw(shader, wheelsCount);
+        
+        
         // Render the frame
         glfwSwapBuffers(window);
         // get the events

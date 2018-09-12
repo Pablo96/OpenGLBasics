@@ -180,7 +180,10 @@ class MeshInstanced
     uint32 VAO; // Vertex Array Object
     uint32 VBO; // Vertex Buffer Object
     uint32 EBO; // Elements Buffer Object
-    uint32 IBO; // Instance Buffer Object
+
+    uint32 TBO; // Transforms Buffer Object
+    uint32 MBO; // Models Buffer Object
+    uint32 NBO; // Normal mat Buffer Object
     bool m_init;
 public:
     std::vector<Vertex> vertices;
@@ -193,7 +196,9 @@ public:
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glGenBuffers(1, &EBO);
-        glGenBuffers(1, &IBO);
+        glGenBuffers(1, &TBO);
+        glGenBuffers(1, &MBO);
+        glGenBuffers(1, &NBO);
 
         // Bind the Array Object
         glBindVertexArray(VAO);
@@ -231,7 +236,7 @@ public:
         /*
         Since glVertexAttribPointer works on the binded buffer we most not forget to bind the buffer
         */
-        glBindBuffer(GL_ARRAY_BUFFER, IBO);
+        glBindBuffer(GL_ARRAY_BUFFER, TBO);
 
         // Enable the vertex attributes
         int attribLocation = 3;
@@ -249,6 +254,36 @@ public:
         glVertexAttribDivisor(attribLocation + 1, 1);
         glVertexAttribDivisor(attribLocation + 2, 1);
         glVertexAttribDivisor(attribLocation + 3, 1);
+        
+        attribLocation = 7;
+        glEnableVertexAttribArray(attribLocation + 0);
+        glEnableVertexAttribArray(attribLocation + 1);
+        glEnableVertexAttribArray(attribLocation + 2);
+        glEnableVertexAttribArray(attribLocation + 3);
+        glBindBuffer(GL_ARRAY_BUFFER, MBO);
+        glVertexAttribPointer(attribLocation + 0, 4, GL_FLOAT, GL_FALSE, 16 * sizeof(float) * 4, (void*)0);
+        glVertexAttribPointer(attribLocation + 1, 4, GL_FLOAT, GL_FALSE, 16 * sizeof(float) * 4, (void*)(sizeof(float) * 4));
+        glVertexAttribPointer(attribLocation + 2, 4, GL_FLOAT, GL_FALSE, 16 * sizeof(float) * 4, (void*)(sizeof(float) * 4 * 2));
+        glVertexAttribPointer(attribLocation + 3, 4, GL_FLOAT, GL_FALSE, 16 * sizeof(float) * 4, (void*)(sizeof(float) * 4 * 3));
+        // Set the attributes per instance
+        glVertexAttribDivisor(attribLocation + 0, 1);
+        glVertexAttribDivisor(attribLocation + 1, 1);
+        glVertexAttribDivisor(attribLocation + 2, 1);
+        glVertexAttribDivisor(attribLocation + 3, 1);
+
+        attribLocation = 11;
+        glEnableVertexAttribArray(attribLocation + 0);
+        glEnableVertexAttribArray(attribLocation + 1);
+        glEnableVertexAttribArray(attribLocation + 2);
+        glBindBuffer(GL_ARRAY_BUFFER, NBO);
+        glVertexAttribPointer(attribLocation + 0, 4, GL_FLOAT, GL_FALSE, 9 * sizeof(float) * 4, (void*)0);
+        glVertexAttribPointer(attribLocation + 1, 4, GL_FLOAT, GL_FALSE, 9 * sizeof(float) * 4, (void*)(sizeof(float) * 4));
+        glVertexAttribPointer(attribLocation + 2, 4, GL_FLOAT, GL_FALSE, 9 * sizeof(float) * 4, (void*)(sizeof(float) * 4 * 2));
+        // Set the attributes per instance
+        glVertexAttribDivisor(attribLocation + 0, 1);
+        glVertexAttribDivisor(attribLocation + 1, 1);
+        glVertexAttribDivisor(attribLocation + 2, 1);
+        glVertexAttribDivisor(attribLocation + 3, 1);
     }
 
     void draw(const uint32 count) const
@@ -257,18 +292,43 @@ public:
         glDrawElementsInstanced(GL_TRIANGLES, (uint32)indices.size(), GL_UNSIGNED_INT, NULL, count);
     }
 
-    void setTransforms(const uint32 count, const glm::mat4* matrices)
+    void setTransforms(const uint32 count, const glm::mat4* matrices, const unsigned char type)
     {
-        glBindBuffer(GL_ARRAY_BUFFER, IBO);
+        switch (type)
+        {
+        case 0:
+            glBindBuffer(GL_ARRAY_BUFFER, TBO);
+            break;
+        case 1:
+            glBindBuffer(GL_ARRAY_BUFFER, MBO);
+            break;
+        default: return;
+        }
+
+
+
         int currentSize;
         int size = count * 16 * sizeof(float);
         // get the binded buffer size
         glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &currentSize);
-
         if (currentSize < size)
             glBufferData(GL_ARRAY_BUFFER, size, matrices, GL_DYNAMIC_DRAW);
         else
             glBufferSubData(GL_ARRAY_BUFFER, 0,  size, matrices);
+    }
+
+    void setTransforms(const uint32 count, const glm::mat3* matrices)
+    {
+        int currentSize;
+        int size = count * 9 * sizeof(float);
+        glBindBuffer(GL_ARRAY_BUFFER, NBO);
+        
+        // get the binded buffer size
+        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &currentSize);
+        if (currentSize < size)
+            glBufferData(GL_ARRAY_BUFFER, size, matrices, GL_DYNAMIC_DRAW);
+        else
+            glBufferSubData(GL_ARRAY_BUFFER, 0, size, matrices);
     }
 };
 
@@ -291,6 +351,8 @@ public:
             {
                 if ((*materials)[i].diffuse)
                     (*materials)[i].diffuse->bind(0);
+                if ((*materials)[i].specular)
+                    (*materials)[i].specular->bind(1);
                 meshes[i].draw(count);
             }
         else
@@ -300,7 +362,15 @@ public:
             }
     }
 
-    void setTransforms(const uint32 count, const glm::mat4* matrices)
+    void setTransforms(const uint32 count, const glm::mat4* matrices, const unsigned char type)
+    {
+        for (auto mesh : meshes)
+        {
+            mesh.setTransforms(count, matrices, type);
+        }
+    }
+
+    void setTransforms(const uint32 count, const glm::mat3* matrices)
     {
         for (auto mesh : meshes)
         {
