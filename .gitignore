@@ -259,3 +259,10 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+OpenGLBasics/res/Textures/Tire_sp.png
+OpenGLBasics/res/Textures/Rim_df.png
+OpenGLBasics/res/Textures/Rim_nm.png
+OpenGLBasics/res/Textures/Rim_sp.png
+OpenGLBasics/res/Textures/Tire_df.png
+OpenGLBasics/res/Textures/Tire_nm.png
+OpenGLBasics/res/Textures/Tire_nm_inv.png
