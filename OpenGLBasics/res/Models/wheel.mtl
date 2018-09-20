@@ -1,4 +1,4 @@
-# Blender MTL File: 'MonsterTruck_UT4.blend'
+# Blender MTL File: 'MonsterTruck-2_7.blend'
 # Material Count: 2
 
 newmtl LP_Rim
@@ -10,8 +10,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd D:\Workspace\GameResources\- Models\- Cars\DeJuegos\BeamNGDrive\CRDTest\LowPoly\Rim_sp.png
-map_Bump D:\\Workspace\\GameResources\\- Models\\- Cars\\DeJuegos\\BeamNGDrive\\CRDTest\\LowPoly\\MaxRes\\Rim_nm.png
+map_Kd D:\Workspace\Art\- Models\- Cars\DeJuegos\BeamNGDrive\CRDTest\LowPoly\Rim_sp.png
 
 newmtl LP_Tire
 Ns 17.647059
@@ -22,7 +21,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd D:\Workspace\GameResources\- Models\- Cars\DeJuegos\BeamNGDrive\CRDTest\LowPoly\Rim_sp.png
-map_Bump D:\\Workspace\\GameResources\\- Models\\- Cars\\DeJuegos\\BeamNGDrive\\CRDTest\\LowPoly\\MaxRes\\Tire_nm.png
-map_Ns D:\\Workspace\\GameResources\\- Models\\- Cars\\DeJuegos\\BeamNGDrive\\CRDTest\\LowPoly\\Tire_sp.png
-map_d D:\\Workspace\\GameResources\\- Models\\- Cars\\DeJuegos\\BeamNGDrive\\CRDTest\\LowPoly\\MaxRes\\Tire_df.png
+map_Kd D:\Workspace\Art\- Models\- Cars\DeJuegos\BeamNGDrive\CRDTest\LowPoly\Rim_sp.png
+map_Bump D:\\Workspace\\Art\\- Models\\- Cars\\DeJuegos\\BeamNGDrive\\CRDTest\\LowPoly\\Tire_nm.png
+map_Ns D:\\Workspace\\Art\\- Models\\- Cars\\DeJuegos\\BeamNGDrive\\CRDTest\\LowPoly\\Tire_sp.png
+map_d D:\\Workspace\\Art\\- Models\\- Cars\\DeJuegos\\BeamNGDrive\\CRDTest\\LowPoly\\Tire_df.png

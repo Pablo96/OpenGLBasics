@@ -7,8 +7,8 @@
 #define WIDTH 800
 #define HEIGHT 640
 
-glm::vec3 camPos(12, 4.0f, -5.0f);
-Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 155, -14);
+glm::vec3 camPos(-2.4f, 1.0f, -2.6f);
+Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 49, -14);
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 // timing
@@ -57,36 +57,57 @@ int run(GLFWwindow* window)
 
 int instanced(GLFWwindow* window)
 {
-    glm::vec3 sunDir(-1, -1, -1);
+    glm::vec3 sunDir(1, -1, 1);
     // SHADER
-    Shader shader("res\\Shaders\\vertexInstanced.glsl", "res\\Shaders\\fragment_lit.glsl");
+    Shader shader("res\\Shaders\\vertexInstanced.vert", "res\\Shaders\\fragment_lit.frag");
     shader.bind();
-    shader.setInt("diffuse", 0);
-    /*
     shader.setInt("material.diffuse", 0);
-    shader.setInt("material.specular", 1);
-    shader.setInt("material.shininess", 32);
-    shader.setVec4f("sun.direction", sunDir.x, sunDir.y, sunDir.z, 0);
+	shader.setInt("material.specular", 1);
+	shader.setInt("material.normal", 2);
+    
+	shader.setVec4f("sun.direction", sunDir.x, sunDir.y, sunDir.z, 0);
     shader.setVec4f("sun.ambient");
     shader.setVec4f("sun.diffuse");
     shader.setVec4f("sun.specular");
-    */
 
     // MODEL
-    Texture crateTexD("res\\Textures\\container2.png");
-    Texture crateTexS("res\\Textures\\container2_specular.png");
-    Material crateMat = { &crateTexD, &crateTexS, 5 };
-    std::vector<Material> materials = { crateMat };
-    ModelInstanced model("res\\Models\\cube_flat.obj", &materials);
+    Texture tireTexD("res\\Textures\\Tire_df.png");
+    Texture tireTexS("res\\Textures\\Tire_sp.png");
+	Texture tireTexN("res\\Textures\\Tire_nm_inv.png");
+    Material tireMat = { &tireTexD, &tireTexS, &tireTexN, 27.0f};
 
-    // when instanced is 2 drawcalls 1 per mesh (wheel)
+	Texture rimTexD("res\\Textures\\Rim_df.png");
+	Texture rimTexS("res\\Textures\\Rim_sp.png");
+	Texture rimTexN("res\\Textures\\Rim_nm.png");
+	Material rimMat = { &rimTexD, &rimTexS, &rimTexN, 256.0f};
+
+    std::vector<Material> materials = { tireMat, rimMat };
+    ModelInstanced model("res\\Models\\wheel.obj", &materials);
+
+	Texture floorTexD("res\\Textures\\RedBrick\\brick_df.png");
+	Texture floorTexS("res\\Textures\\RedBrick\\brick_sp.png");
+	Texture floorTexN("res\\Textures\\RedBrick\\brick_nm.png");
+	Material floorMaterial = { &floorTexD, &floorTexS, &floorTexN, 5.0f };
+	
+	std::vector<Material> floorMaterials = { floorMaterial };
+	ModelInstanced floor("res\\Models\\plane.obj", &floorMaterials);
+    
+	// when instanced is 2 drawcalls 1 per mesh (wheel)
     const uint32 wheelsCount = 1;
 
     glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
     glm::mat4 PVmat = perspective * cam.GetViewMatrix();
-    glm::mat4 modelMat = glm::mat4(1.0f);
+	
+	glm::mat4 floorMat = glm::translate(glm::vec3(0, -1, 0))
+		* glm::scale(glm::vec3(10.0f, 10.0f, 10.0f));
+	glm::mat3 floorNMat = glm::transpose(glm::inverse(glm::mat3(floorMat)));
+    
+	glm::mat4 modelMat = glm::rotate(glm::radians(0.0f), glm::vec3(0, 1, 0));
     glm::mat3 normalMat = glm::transpose(glm::inverse(glm::mat3(modelMat)));
-    glm::mat4 transform = PVmat * modelMat;
+	
+	
+	glm::mat4 transform;
+	float angle = 0.0f;
 
     // Set clear color
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -99,9 +120,14 @@ int instanced(GLFWwindow* window)
         lastFrame = currentFrame;
         std::cout << deltaTime * 1000 << "ms" << std::endl;
         // Logic
+		angle += .5f;
+		angle = (angle > 360.0f) ? 0.0f : angle;
         PVmat = perspective * cam.GetViewMatrix();
         camPos = cam.Position;
-        transform = PVmat * modelMat;
+		modelMat = glm::rotate(glm::radians(angle), glm::vec3(1, 0, 0));
+		normalMat = glm::transpose(glm::inverse(glm::mat3(modelMat)));
+		transform = PVmat * modelMat;
+		
 
         // RENDER CALLS OR CODE
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -112,9 +138,13 @@ int instanced(GLFWwindow* window)
         model.setTransforms(1, &transform, 0);
         model.setTransforms(1, &modelMat, 1);
         model.setTransforms(1, &normalMat);
-        model.draw(shader, wheelsCount);
-        
-        
+        model.draw(shader, 1);
+
+		transform = PVmat * floorMat;
+		floor.setTransforms(1, &transform, 0);
+		floor.setTransforms(1, &floorMat, 1);
+		floor.setTransforms(1, &floorNMat);
+		floor.draw(shader, 1);
         // Render the frame
         glfwSwapBuffers(window);
         // get the events
@@ -135,8 +165,8 @@ int instancedUniform(GLFWwindow* window)
     // MODEL
     Texture tireTex("res\\Textures\\Tire_df.png");
     Texture rimTex("res\\Textures\\Rim_df.png");
-    Material tireMat = { &tireTex, nullptr, 5 };
-    Material rimMat = { &rimTex, nullptr, 256 };
+    Material tireMat = { &tireTex, nullptr, nullptr, 5 };
+    Material rimMat = { &rimTex, nullptr, nullptr, 256 };
     std::vector<Material> materials = { tireMat, rimMat };
     ModelInstanced model("res\\Models\\wheel.obj", &materials);
 
@@ -212,8 +242,8 @@ int noInstance(GLFWwindow* window)
     // MODEL
     Texture tireTex("res\\Textures\\Tire_df.png");
     Texture rimTex("res\\Textures\\Rim_df.png");
-    Material tireMat = { &tireTex, nullptr, 5 };
-    Material rimMat = { &rimTex, nullptr, 256 };
+    Material tireMat = { &tireTex, nullptr, nullptr, 5 };
+    Material rimMat = { &rimTex, nullptr, nullptr, 256 };
     std::vector<Material> materials = { tireMat, rimMat };
     Model model("res\\Models\\wheel.obj", &materials);
 
