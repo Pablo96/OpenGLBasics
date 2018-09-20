@@ -50,7 +50,6 @@ artifacts/
 *_i.h
 *.ilk
 *.meta
-*.obj
 *.pch
 *.pdb
 *.pgc
@@ -266,3 +265,4 @@ OpenGLBasics/res/Textures/Rim_sp.png
 OpenGLBasics/res/Textures/Tire_df.png
 OpenGLBasics/res/Textures/Tire_nm.png
 OpenGLBasics/res/Textures/Tire_nm_inv.png
+OpenGLBasics/res/Models/wheel.obj
