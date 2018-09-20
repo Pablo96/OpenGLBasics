@@ -14,6 +14,7 @@ struct Vertex
     glm::vec3 pos;
     glm::vec3 normal;
     glm::vec2 uvCoord;
+	glm::vec3 tangent;
 };
 
 class Mesh
@@ -226,11 +227,13 @@ public:
         glEnableVertexAttribArray(1);
         // vertex texture coords
         glEnableVertexAttribArray(2);
-
+		// vertex tangent coords
+		glEnableVertexAttribArray(3);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uvCoord));
+		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, tangent));
 
         // Transform attribute
         /*
@@ -239,7 +242,7 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, TBO);
 
         // Enable the vertex attributes
-        int attribLocation = 3;
+        int attribLocation = 4;
         glEnableVertexAttribArray(attribLocation + 0);
         glEnableVertexAttribArray(attribLocation + 1);
         glEnableVertexAttribArray(attribLocation + 2);
@@ -255,7 +258,7 @@ public:
         glVertexAttribDivisor(attribLocation + 2, 1);
         glVertexAttribDivisor(attribLocation + 3, 1);
         
-        attribLocation = 7;
+        attribLocation += 4;
         glEnableVertexAttribArray(attribLocation + 0);
         glEnableVertexAttribArray(attribLocation + 1);
         glEnableVertexAttribArray(attribLocation + 2);
@@ -271,7 +274,7 @@ public:
         glVertexAttribDivisor(attribLocation + 2, 1);
         glVertexAttribDivisor(attribLocation + 3, 1);
 
-        attribLocation = 11;
+        attribLocation += 4;
         glEnableVertexAttribArray(attribLocation + 0);
         glEnableVertexAttribArray(attribLocation + 1);
         glEnableVertexAttribArray(attribLocation + 2);
@@ -353,6 +356,10 @@ public:
                     (*materials)[i].diffuse->bind(0);
                 if ((*materials)[i].specular)
                     (*materials)[i].specular->bind(1);
+				if ((*materials)[i].normal)
+					(*materials)[i].normal->bind(2);
+
+				shader.setFloat("material.shininess", (*materials)[i].shininess);
                 meshes[i].draw(count);
             }
         else
@@ -386,7 +393,12 @@ private:
     void loadModel(const std::string& path)
     {
         Assimp::Importer import;
-        const aiScene *scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+        const aiScene *scene = import.ReadFile(path, 
+			  aiProcess_Triangulate
+			| aiProcess_CalcTangentSpace
+			| aiProcess_FlipUVs
+			| aiProcess_GenSmoothNormals
+		);
 
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
@@ -430,6 +442,11 @@ private:
             vector.y = mesh->mNormals[i].y;
             vector.z = mesh->mNormals[i].z;
             vertex.normal = vector;
+
+			vector.x = mesh->mTangents[i].x;
+			vector.y = mesh->mTangents[i].y;
+			vector.z = mesh->mTangents[i].z;
+			vertex.tangent = vector;
 
             if (mesh->mTextureCoords[0]) // does the mesh contain texture coordinates?
             {

@@ -164,8 +164,9 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         // generate texture
-        GLenum channels = (nrChannels == 4) ? GL_RGBA : GL_RGB;
-        glTexImage2D(GL_TEXTURE_2D, 0, channels, width, height, 0, channels, GL_UNSIGNED_BYTE, data);
+        GLenum channels = (nrChannels == 4) ? GL_SRGB_ALPHA : GL_SRGB;
+		GLenum channelsImage = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+        glTexImage2D(GL_TEXTURE_2D, 0, channels, width, height, 0, channelsImage, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
 
         stbi_image_free(data);
@@ -183,6 +184,7 @@ struct Material
 {
     Texture* diffuse;
     Texture* specular;
+	Texture* normal;
     float shininess;
 };
 
