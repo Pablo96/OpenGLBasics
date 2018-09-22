@@ -24,8 +24,6 @@ void initLog()
 int createWindow(GLFWwindow** window);
 int configOpenGL();
 int run(GLFWwindow* window);
-int noInstance(GLFWwindow* window);
-int instancedUniform(GLFWwindow* window);
 int instanced(GLFWwindow* window);
 void processInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -58,7 +56,7 @@ int run(GLFWwindow* window)
 int instanced(GLFWwindow* window)
 {
     glm::vec3 sunDir(1, -1, 1);
-    // SHADER
+    // SHADERS
     Shader shader("res\\Shaders\\vertexInstanced.vert", "res\\Shaders\\fragment_lit.frag");
     shader.bind();
     shader.setInt("material.diffuse", 0);
@@ -70,7 +68,11 @@ int instanced(GLFWwindow* window)
     shader.setVec4f("sun.diffuse");
     shader.setVec4f("sun.specular");
 
-    // MODEL
+	Shader r2TexShader("res\\Shaders\\renderToTexture.vert", "res\\Shaders\\renderToTexture.frag");
+	r2TexShader.bind();
+	r2TexShader.setInt("screenTexture", 0);
+
+    // MODELS
     Texture tireTexD("res\\Textures\\Tire_df.png");
     Texture tireTexS("res\\Textures\\Tire_sp.png");
 	Texture tireTexN("res\\Textures\\Tire_nm_inv.png");
@@ -109,8 +111,110 @@ int instanced(GLFWwindow* window)
 	glm::mat4 transform;
 	float angle = 0.0f;
 
-    // Set clear color
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+	uint32 vao;
+	{
+
+		float vertices[] = 
+		{
+			// pos		// texcoord
+			-1.0f, -1.0f,		0.0f, 0.0f,
+			 1.0f, -1.0f,		1.0f, 0.0f,
+			 1.0f,  1.0f, 		1.0f, 1.0f,
+			-1.0f,  1.0f,		0.0f, 1.0f
+		};
+
+		uint32 indices[] = 
+		{
+			0, 1, 2,
+			2, 3, 0
+		};
+
+		uint32 VBO, EBO;
+		// Generate the buffers
+		glGenVertexArrays(1, &vao);
+		glGenBuffers(1, &VBO);
+		glGenBuffers(1, &EBO);
+		
+		// Bind the Array Object
+		glBindVertexArray(vao);
+
+
+
+		// Bind Vertex Buffer to the Array Object
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		// Reserve memory and Send data to the Vertex Buffer
+		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 16, vertices, GL_STATIC_DRAW);
+
+
+		// Bind Element Buffer to the Array Object
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+		// Reserve memory and Send data to the Elment Buffer
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int),
+			indices, GL_STATIC_DRAW);
+
+
+
+		// Set the atribute pointers
+		// vertex positions
+		glEnableVertexAttribArray(0);
+		// vertex texture coords
+		glEnableVertexAttribArray(1);
+
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)0);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)(sizeof(float) * 2));
+
+	}
+
+	
+	// FRAMEBUFFER
+	uint32 fbo;
+	glGenFramebuffers(1, &fbo);
+	
+	//GL_FRAMEBUFFER: all the next read and write framebuffer operations will affect the currently bound framebuffer.
+	//GL_READ_FRAMEBUFFER: Read only.
+	//GL_DRAW_FRAMEBUFFER: Wtite only.
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+	// Create a texxture attachment
+	uint32 texture;
+	{
+		glGenTextures(1, &texture);
+		glBindTexture(GL_TEXTURE_2D, texture);
+		// Only reserve memory but dont pass data sincce it will be filled by the framebuffer renders.
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH, HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	}
+
+	// attach it to the framebuffer
+	// level: mipmap level.
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+
+	// Create a render buffer (the render buffer is a buffer like the texture but raw{not converted to texture format}
+	// so it is faster to write and copy but cant be easyly accessed after.
+	uint32 rbo;
+	glGenRenderbuffers(1, &rbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, WIDTH, HEIGHT);
+	// bind the render buffer to the framebuffer
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+
+	// Check if it is currently bound since it need to have at least one color attachment.
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		std::cout << "Warning: Framebuffer is not complete!\n";
+	}
+
+	// only the default framebuffer (0) have visual output. All the others are for offscreen rendering.
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	//glDeleteFramebuffers(1, &fbo);
+	
+
     std::cout.flush();
     while (!glfwWindowShouldClose(window))
     {
@@ -130,7 +234,13 @@ int instanced(GLFWwindow* window)
 		
 
         // RENDER CALLS OR CODE
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		
+		// Render to texture
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+		glEnable(GL_DEPTH_TEST);
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shader.bind();
         shader.setVec4f("viewPos", camPos.x, camPos.y, camPos.z);
@@ -145,80 +255,23 @@ int instanced(GLFWwindow* window)
 		floor.setTransforms(1, &floorMat, 1);
 		floor.setTransforms(1, &floorNMat);
 		floor.draw(shader, 1);
-        // Render the frame
-        glfwSwapBuffers(window);
-        // get the events
-        glfwPollEvents();
-        processInput(window);
-    }
+		
 
-    return 0;
-}
+		// render to screen
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glDisable(GL_DEPTH_TEST);
+		
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		
+		r2TexShader.bind();
+		glBindVertexArray(vao);
 
-int instancedUniform(GLFWwindow* window)
-{
-    // SHADER
-    Shader shader("res\\Shaders\\vertexInstancedUniform.glsl", "res\\Shaders\\fragment.glsl");
-    shader.bind();
-    shader.setInt("diffuse", 0);
-
-    // MODEL
-    Texture tireTex("res\\Textures\\Tire_df.png");
-    Texture rimTex("res\\Textures\\Rim_df.png");
-    Material tireMat = { &tireTex, nullptr, nullptr, 5 };
-    Material rimMat = { &rimTex, nullptr, nullptr, 256 };
-    std::vector<Material> materials = { tireMat, rimMat };
-    ModelInstanced model("res\\Models\\wheel.obj", &materials);
-
-    // when instanced is 2 drawcalls 1 per mesh
-    const uint32 wheelsCount = 256;
-
-    glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
-    
-    std::vector<glm::mat4> transforms;
-    for (unsigned int i = 0; i < wheelsCount; i++)
-    {
-        float angle = 20.0f * i;
-        glm::vec3 locVect = glm::vec3(
-            rand() % 20 - 10.0f,
-            rand() % 20 - 10.0f,
-            rand() % 20
-        );
-        glm::mat4 modelMat = glm::translate(locVect)
-            * glm::rotate(glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-
-        transforms.push_back(modelMat);
-    }
-
-
-    // Set clear color
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    std::cout.flush();
-    while (!glfwWindowShouldClose(window))
-    {
-        // TIME
-        float currentFrame = (float)glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-        std::cout << deltaTime * 1000 << "ms" << std::endl;
-        // Logic
-        glm::mat4 PVmat = perspective * cam.GetViewMatrix();
-        camPos = cam.Position;
-
-        // RENDER CALLS OR CODE
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        shader.bind();
-        shader.setVec4f("viewPos", camPos.x, camPos.y, camPos.z);
-
-        for (unsigned int i = 0; i < wheelsCount; i++)
-        {
-            glm::mat4 modelMat = transforms[i];
-            glm::mat4 transform = PVmat * modelMat;
-            std::string index = std::to_string(i);
-            shader.setMat4f(("transforms[" + index + "]").c_str(), transform);
-        }
-        model.draw(shader, wheelsCount);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture);
+		
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
+		
 
         // Render the frame
         glfwSwapBuffers(window);
@@ -227,92 +280,6 @@ int instancedUniform(GLFWwindow* window)
         processInput(window);
     }
 
-    return 0;
-}
-
-int noInstance(GLFWwindow* window)
-{
-    // SHADER
-    Shader shader("res\\Shaders\\vertex.glsl", "res\\Shaders\\fragment.glsl");
-    shader.bind();
-    // Set Materials
-    // bind the uniforms to the active unit texture (0 and 1 respectively)
-    shader.setInt("material.diffuseTex", 0);
-
-    // MODEL
-    Texture tireTex("res\\Textures\\Tire_df.png");
-    Texture rimTex("res\\Textures\\Rim_df.png");
-    Material tireMat = { &tireTex, nullptr, nullptr, 5 };
-    Material rimMat = { &rimTex, nullptr, nullptr, 256 };
-    std::vector<Material> materials = { tireMat, rimMat };
-    Model model("res\\Models\\wheel.obj", &materials);
-
-    
-    // 2 draw calls per wheels so total draw calls = wheelsCount * 2 + 4 (cubeLights)
-    const uint32 wheelsCount = 500;
-
-
-    glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
-
-    std::vector<glm::mat4> transforms;
-    for (unsigned int i = 0; i < wheelsCount; i++)
-    {
-        float angle = 20.0f * i;
-        glm::vec3 locVect = glm::vec3(
-            rand() % 20 - 10.0f,
-            rand() % 20 - 10.0f,
-            rand() % 20
-        );
-        glm::mat4 modelMat = glm::translate(locVect)
-            * glm::rotate(glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-
-        transforms.push_back(modelMat);
-    }
-
-
-
-
-
-    
-    // Set clear color
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-
-    while (!glfwWindowShouldClose(window))
-    {
-        // TIME
-        float currentFrame = (float)glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-        std::cout << deltaTime * 1000 << "ms" << std::endl;
-        // Logic
-        glm::mat4 PVmat = perspective * cam.GetViewMatrix();
-
-        // RENDER CALLS OR CODE
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-
-        shader.bind();
-        camPos = cam.Position;
-        shader.setVec4f("viewPos", camPos.x, camPos.y, camPos.z);
-
-        for (unsigned int i = 0; i < wheelsCount; i++)
-        {
-            glm::mat4 modelMat = transforms[i];
-            glm::mat3 normalMat = glm::mat3(glm::transpose(glm::inverse(modelMat)));
-            glm::mat4 transform = PVmat * modelMat;
-            shader.setMat3f("normalMat", normalMat);
-            shader.setMat3f("model", modelMat);
-            shader.setMat4f("transform", transform);
-            // We are doing wheelsCount times draw call
-            model.draw(shader);
-        }
-
-        // Render the frame
-        glfwSwapBuffers(window);
-        // get the events
-        glfwPollEvents();
-        processInput(window);
-    }
     return 0;
 }
 
