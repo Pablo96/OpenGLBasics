@@ -7,9 +7,13 @@ layout(location = 4)in mat4 transform;
 layout(location = 8)in mat4 model;
 layout(location = 12)in mat3 normalMat;
 
+uniform mat4 lightSpaceMatrix;
+
 out mat3 tbnMatrix;
 out vec4 vPos;
 out vec2 uvCoord;
+out vec4 lightSpacePos;
+out vec4 vNormal;
 
 void main()
 {
@@ -18,6 +22,9 @@ void main()
     
     uvCoord = texCoord;
     vPos = model * pos;
+    vNormal = model * vec4(normal, 0.0);
+
+    lightSpacePos =  lightSpaceMatrix * vPos;
 
     vec3 n = normalize(vec3(model *  vec4(normal, 0.0)));
     vec3 t = normalize(vec3(model *  vec4(tangent, 0.0)));

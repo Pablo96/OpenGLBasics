@@ -55,25 +55,36 @@ int run(GLFWwindow* window)
 
 int instanced(GLFWwindow* window)
 {
-    glm::vec3 sunDir(1, -1, 1);
+    glm::vec3 sunDir(1, 1, 1);
+	glm::vec3 sunPos = sunDir * 1.8f;
+
     // SHADERS
     Shader shader("res\\Shaders\\vertexInstanced.vert", "res\\Shaders\\fragment_lit.frag");
     shader.bind();
     shader.setInt("material.diffuse", 0);
 	shader.setInt("material.specular", 1);
 	shader.setInt("material.normal", 2);
-    
+	shader.setInt("shadowMap", 3);
+
 	shader.setVec4f("sun.direction", sunDir.x, sunDir.y, sunDir.z, 0);
-    shader.setVec4f("sun.ambient");
-    shader.setVec4f("sun.diffuse");
+    shader.setVec4f("sun.ambient", 0.2f, 0.2f, 0.2f);
+    shader.setVec4f("sun.diffuse", 1.0f, 0.9f, 0.8f);
     shader.setVec4f("sun.specular");
+	shader.setFloat("sun.energy", 1.5f);
+	
 
 	Shader r2TexShader("res\\Shaders\\renderToTexture.vert", "res\\Shaders\\renderToTexture.frag");
 	r2TexShader.bind();
 	r2TexShader.setInt("screenTexture", 0);
 
-    // MODELS
-    Texture tireTexD("res\\Textures\\Tire_df.png");
+	Shader shadowMap("res\\Shaders\\shadowMap.vert", "res\\Shaders\\empty.frag");
+
+	Shader unlitShader("res\\Shaders\\vertexInstanced.vert", "res\\Shaders\\fragment_unlit.frag");
+	unlitShader.setInt("diffuse", 0);
+    
+	
+	// MODELS
+    Texture tireTexD("res\\Textures\\Tire_df_lt.png");
     Texture tireTexS("res\\Textures\\Tire_sp.png");
 	Texture tireTexN("res\\Textures\\Tire_nm_inv.png");
     Material tireMat = { &tireTexD, &tireTexS, &tireTexN, 27.0f};
@@ -87,30 +98,38 @@ int instanced(GLFWwindow* window)
     ModelInstanced model("res\\Models\\wheel.obj", &materials);
 
 	Texture floorTexD("res\\Textures\\RedBrick\\brick_df.png");
-	Texture floorTexS("res\\Textures\\RedBrick\\brick_sp.png");
+	Texture floorTexS("res\\Textures\\blue.bmp");
 	Texture floorTexN("res\\Textures\\RedBrick\\brick_nm.png");
 	Material floorMaterial = { &floorTexD, &floorTexS, &floorTexN, 5.0f };
 	
 	std::vector<Material> floorMaterials = { floorMaterial };
 	ModelInstanced floor("res\\Models\\plane.obj", &floorMaterials);
     
+	Texture sunD("res\\Textures\\white.bmp");
+	Material sunMaterial = { &sunD, nullptr, nullptr, 1.0f };
+
+	std::vector<Material> sunMaterials = { sunMaterial };
+	ModelInstanced sunModel("res\\Models\\sphere_lp.obj", &sunMaterials);
+
 	// when instanced is 2 drawcalls 1 per mesh (wheel)
     const uint32 wheelsCount = 1;
 
     glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
     glm::mat4 PVmat = perspective * cam.GetViewMatrix();
 	
-	glm::mat4 floorMat = glm::translate(glm::vec3(0, -1, 0))
+	glm::mat4 floorMat = glm::translate(glm::vec3(0, -0.8, 0))
 		* glm::scale(glm::vec3(10.0f, 10.0f, 10.0f));
 	glm::mat3 floorNMat = glm::transpose(glm::inverse(glm::mat3(floorMat)));
     
 	glm::mat4 modelMat = glm::rotate(glm::radians(0.0f), glm::vec3(0, 1, 0));
     glm::mat3 normalMat = glm::transpose(glm::inverse(glm::mat3(modelMat)));
 	
+	glm::mat4 sunMat = glm::translate(sunPos * 5.0f) * glm::scale(glm::vec3(0.2f));
 	
 	glm::mat4 transform;
 	float angle = 0.0f;
 
+	// Screen plane
 	uint32 vao;
 	{
 
@@ -215,6 +234,55 @@ int instanced(GLFWwindow* window)
 	//glDeleteFramebuffers(1, &fbo);
 	
 
+	//////////////////////////////////////
+	//			SHADOW MAPPING			//
+	//////////////////////////////////////
+
+	// the depth map framebuffer
+	uint32 depthMapFBO;
+	glGenFramebuffers(1, &depthMapFBO);
+
+	// 2D texture for the framebuffer
+	const int shadowWidth = 256;
+	const int shadowHeight = shadowWidth;
+	uint32 depthMap;
+	{
+		glGenTextures(1, &depthMap);
+		glBindTexture(GL_TEXTURE_2D, depthMap);
+		// Only reserve memory but dont pass data sincce it will be filled by the framebuffer renders.
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+			shadowWidth, shadowHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		// fix outside texture coord shadows
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+		float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+		glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+	}
+
+	// bind the depth framebuffer
+	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+	// attach the depthmap to the framebuffer
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+	// tell opengl the framebuffer will not have draw attachment else wont be complete
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	// unbind the framebuffer binding the default one
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// create the view and projection matrix(directional light is ortho proj)
+	const float near_plane = 1.0f, far_plane = 6.0f;
+	const float shadowSize = 0.95f;
+	glm::mat4 lightProjMat = glm::ortho(-shadowSize, shadowSize, -shadowSize, shadowSize, near_plane, far_plane);
+	glm::mat4 lightViewMat = glm::lookAt(sunPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::mat4 PVmatLight = lightProjMat * lightViewMat;
+	shadowMap.bind();
+	shadowMap.setMat4f("lightSpaceMatrix", PVmatLight);
+	shader.bind();
+	shader.setMat4f("lightSpaceMatrix", PVmatLight);
+
     std::cout.flush();
     while (!glfwWindowShouldClose(window))
     {
@@ -230,31 +298,61 @@ int instanced(GLFWwindow* window)
         camPos = cam.Position;
 		modelMat = glm::rotate(glm::radians(angle), glm::vec3(1, 0, 0));
 		normalMat = glm::transpose(glm::inverse(glm::mat3(modelMat)));
-		transform = PVmat * modelMat;
 		
 
         // RENDER CALLS OR CODE
+
+		// Render the shadow map
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+			glViewport(0, 0, shadowWidth, shadowHeight);
+			glEnable(GL_DEPTH_TEST);
+			glClear(GL_DEPTH_BUFFER_BIT);
+
+			shadowMap.bind();
+
+			shadowMap.setMat4f("model", modelMat);
+			model.draw(shader, 1);
+
+			shadowMap.setMat4f("model", floorMat);
+			floor.draw(shader, 1);
+		}
 		
+
 		// Render to texture
-		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-		glEnable(GL_DEPTH_TEST);
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+			glEnable(GL_DEPTH_TEST);
+			glViewport(0, 0, WIDTH, HEIGHT);
+			glClearColor(0.2f, 0.48f, 1.0f, 1.0f);
 
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        shader.bind();
-        shader.setVec4f("viewPos", camPos.x, camPos.y, camPos.z);
+			unlitShader.bind();
+			transform = PVmat * sunMat;
+			sunModel.setTransforms(1, &transform, 0);
+			sunModel.draw(unlitShader, 1);
+			
 
-        model.setTransforms(1, &transform, 0);
-        model.setTransforms(1, &modelMat, 1);
-        model.setTransforms(1, &normalMat);
-        model.draw(shader, 1);
+			shader.bind();
+			shader.setVec4f("viewPos", camPos.x, camPos.y, camPos.z);
 
-		transform = PVmat * floorMat;
-		floor.setTransforms(1, &transform, 0);
-		floor.setTransforms(1, &floorMat, 1);
-		floor.setTransforms(1, &floorNMat);
-		floor.draw(shader, 1);
+			// set the shadow map
+			glActiveTexture(GL_TEXTURE0 + 3);
+			glBindTexture(GL_TEXTURE_2D, depthMap);
+
+			transform = PVmat * modelMat;
+			model.setTransforms(1, &transform, 0);
+			model.setTransforms(1, &modelMat, 1);
+			model.setTransforms(1, &normalMat);
+			model.draw(shader, 1);
+
+			transform = PVmat * floorMat;
+			floor.setTransforms(1, &transform, 0);
+			floor.setTransforms(1, &floorMat, 1);
+			floor.setTransforms(1, &floorNMat);
+			floor.draw(shader, 1);
+		}
 		
 
 		// render to screen
@@ -268,6 +366,7 @@ int instanced(GLFWwindow* window)
 		glBindVertexArray(vao);
 
 		glActiveTexture(GL_TEXTURE0);
+		//glBindTexture(GL_TEXTURE_2D, depthMap);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
