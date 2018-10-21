@@ -355,12 +355,14 @@ public:
             {
                 if ((*materials)[i].diffuse)
                     (*materials)[i].diffuse->bind(0);
-                if ((*materials)[i].specular)
+				if ((*materials)[i].specular)
                     (*materials)[i].specular->bind(1);
+				/*
 				if ((*materials)[i].normal)
 					(*materials)[i].normal->bind(2);
+				*/
 
-				shader.setFloat("material.shininess", (*materials)[i].shininess);
+				//shader.setFloat("material.shininess", (*materials)[i].shininess);
                 meshes[i].draw(count);
             }
         else

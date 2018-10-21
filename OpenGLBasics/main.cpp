@@ -4,8 +4,8 @@
 #include <math.h>
 
 #define BUFFER_SIZE 1024
-#define WIDTH 800
-#define HEIGHT 640
+#define WIDTH 1280
+#define HEIGHT 720
 
 glm::vec3 camPos(-2.4f, 1.0f, -2.6f);
 Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 49, -14);
@@ -59,18 +59,18 @@ int instanced(GLFWwindow* window)
 	glm::vec3 sunPos = sunDir * 1.8f;
 
     // SHADERS
-    Shader shader("res\\Shaders\\vertexInstanced.vert", "res\\Shaders\\fragment_lit.frag");
+    Shader shader("res\\Shaders\\vertexInstanced.vert", "res\\Shaders\\fragment_PBR.frag");
     shader.bind();
-    shader.setInt("material.diffuse", 0);
-	shader.setInt("material.specular", 1);
-	shader.setInt("material.normal", 2);
-	shader.setInt("shadowMap", 3);
+    shader.setInt("material.albedo", 0);
+	shader.setInt("material.MRA", 1);
+	shader.setInt("shadowMap", 2);
 
 	shader.setVec4f("sun.direction", sunDir.x, sunDir.y, sunDir.z, 0);
+	shader.setVec4f("sun.position", sunPos.x, sunPos.y, sunPos.z, 1.0f),
     shader.setVec4f("sun.ambient", 0.2f, 0.2f, 0.2f);
     shader.setVec4f("sun.diffuse", 1.0f, 0.9f, 0.8f);
     shader.setVec4f("sun.specular");
-	shader.setFloat("sun.energy", 1.5f);
+	shader.setFloat("sun.energy", 10.5f);
 	
 
 	Shader r2TexShader("res\\Shaders\\renderToTexture.vert", "res\\Shaders\\renderToTexture.frag");
@@ -84,7 +84,7 @@ int instanced(GLFWwindow* window)
     
 	
 	// MODELS
-    Texture tireTexD("res\\Textures\\Tire_df_lt.png");
+    Texture tireTexD("res\\Textures\\Tire_df.png");
     Texture tireTexS("res\\Textures\\Tire_sp.png");
 	Texture tireTexN("res\\Textures\\Tire_nm_inv.png");
     Material tireMat = { &tireTexD, &tireTexS, &tireTexN, 27.0f};
@@ -340,7 +340,7 @@ int instanced(GLFWwindow* window)
 			shader.setVec4f("viewPos", camPos.x, camPos.y, camPos.z);
 
 			// set the shadow map
-			glActiveTexture(GL_TEXTURE0 + 3);
+			glActiveTexture(GL_TEXTURE0 + 2);
 			glBindTexture(GL_TEXTURE_2D, depthMap);
 
 			transform = PVmat * modelMat;
