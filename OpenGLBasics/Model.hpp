@@ -340,16 +340,17 @@ class ModelInstanced
     std::vector<MeshInstanced> meshes;
     std::string directory;
     std::vector<Material>* materials;
+	const std::string name;
 public:
-    ModelInstanced(const std::string& path, std::vector<Material>* inMaterials = nullptr)
-        : materials(inMaterials)
+    ModelInstanced(const std::string& path, std::vector<Material>* inMaterials = nullptr, const std::string& inName="mesh")
+        : materials(inMaterials), name(inName)
     {
         loadModel(path);
     }
 
     void draw(Shader& shader, const uint32 count)
     {
-        if (materials && (*materials).size() > 0)
+        if (materials && materials->size() > 0)
             for (uint32 i = 0; i < meshes.size(); i++)
             {
                 if ((*materials)[i].diffuse)

@@ -95,7 +95,7 @@ int instanced(GLFWwindow* window)
 	Material rimMat = { &rimTexD, &rimTexS, &rimTexN, 256.0f};
 
     std::vector<Material> materials = { tireMat, rimMat };
-    ModelInstanced model("res\\Models\\wheel.obj", &materials);
+    ModelInstanced model("res\\Models\\wheel.obj", &materials, "Wheel");
 
 	Texture floorTexD("res\\Textures\\RedBrick\\brick_df.png");
 	Texture floorTexS("res\\Textures\\blue.bmp");
@@ -260,17 +260,17 @@ int instanced(GLFWwindow* window)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 		float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 		glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-	}
 
-	// bind the depth framebuffer
-	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-	// attach the depthmap to the framebuffer
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
-	// tell opengl the framebuffer will not have draw attachment else wont be complete
-	glDrawBuffer(GL_NONE);
-	glReadBuffer(GL_NONE);
-	// unbind the framebuffer binding the default one
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		// bind the depth framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+		// attach the depthmap to the framebuffer
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+		// tell opengl the framebuffer will not have draw attachment else wont be complete
+		glDrawBuffer(GL_NONE);
+		glReadBuffer(GL_NONE);
+		// unbind the framebuffer binding the default one
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
 
 	// create the view and projection matrix(directional light is ortho proj)
 	const float near_plane = 1.0f, far_plane = 6.0f;
@@ -283,6 +283,8 @@ int instanced(GLFWwindow* window)
 	shader.bind();
 	shader.setMat4f("lightSpaceMatrix", PVmatLight);
 
+
+	
     std::cout.flush();
     while (!glfwWindowShouldClose(window))
     {
