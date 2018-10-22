@@ -92,9 +92,9 @@ public:
             {
                 if ((*materials)[i].diffuse)
                     (*materials)[i].diffuse->bind(0);
-                if ((*materials)[i].specular)
-                    (*materials)[i].specular->bind(1);
-                shader.setFloat("material.shininess", (*materials)[i].shininess);
+				if ((*materials)[i].specular)
+					(*materials)[i].specular->bind(1);
+                shader.setFloat("material.intensity", (*materials)[i].intensity);
                 meshes[i].draw(shader);
             }
         else
@@ -355,14 +355,11 @@ public:
             {
                 if ((*materials)[i].diffuse)
                     (*materials)[i].diffuse->bind(0);
-				if ((*materials)[i].specular)
-                    (*materials)[i].specular->bind(1);
-				/*
+				
 				if ((*materials)[i].normal)
 					(*materials)[i].normal->bind(2);
-				*/
 
-				//shader.setFloat("material.shininess", (*materials)[i].shininess);
+				shader.setFloat("material.intensity", (*materials)[i].intensity);
                 meshes[i].draw(count);
             }
         else

@@ -183,9 +183,10 @@ public:
 struct Material
 {
     Texture* diffuse;
-    Texture* specular;
+	Texture* specular;
 	Texture* normal;
-    float shininess;
+    float intensity;
+	float shininess;
 };
 
 
