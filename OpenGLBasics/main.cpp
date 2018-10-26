@@ -50,7 +50,6 @@ int main(int argc, char** argv)
 int run(GLFWwindow* window)
 {
     return instanced(window);
-    //return noInstance(window);
 }
 
 int instanced(GLFWwindow* window)
