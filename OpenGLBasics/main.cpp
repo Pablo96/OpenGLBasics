@@ -1,6 +1,10 @@
 #include "main.h"
 #include "Model.hpp"
+#include "Camera.hpp"
+#include "Shader.hpp"
 #include <GLFW/glfw3.h>
+#include <GLM/glm.hpp>
+#include <GLM/gtx/transform.hpp>
 #include <math.h>
 
 #define BUFFER_SIZE 1024
@@ -24,7 +28,6 @@ void initLog()
 int createWindow(GLFWwindow** window);
 int configOpenGL();
 int run(GLFWwindow* window);
-int instanced(GLFWwindow* window);
 void processInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
@@ -48,12 +51,6 @@ int main(int argc, char** argv)
 }
 
 int run(GLFWwindow* window)
-{
-    return instanced(window);
-    //return noInstance(window);
-}
-
-int instanced(GLFWwindow* window)
 {
     glm::vec3 sunDir(1, 1, 1);
 	glm::vec3 sunPos = sunDir * 1.8f;
