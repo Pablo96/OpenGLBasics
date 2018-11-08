@@ -1,5 +1,6 @@
 #pragma once
 #include "main.h"
+#include "Shader.hpp"
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <GLM/glm.hpp>
