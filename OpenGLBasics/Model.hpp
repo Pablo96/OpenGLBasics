@@ -15,6 +15,7 @@ struct Vertex
     glm::vec3 normal;
     glm::vec2 uvCoord;
 	glm::vec3 tangent;
+	glm::vec3 bitangent;
 };
 
 class Mesh
@@ -64,6 +65,12 @@ public:
         // vertex texture coords
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uvCoord));
+		// vertex tangent
+		glEnableVertexAttribArray(3);
+		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, tangent));
+		// vertex bitangent
+		glEnableVertexAttribArray(4);
+		glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, bitangent));
     }
 
     void draw(Shader& shader)
@@ -92,9 +99,8 @@ public:
             {
                 if ((*materials)[i].diffuse)
                     (*materials)[i].diffuse->bind(0);
-				if ((*materials)[i].specular)
-					(*materials)[i].specular->bind(1);
-                shader.setFloat("material.intensity", (*materials)[i].intensity);
+				if ((*materials)[i].normal)
+					(*materials)[i].normal->bind(1);
                 meshes[i].draw(shader);
             }
         else
@@ -107,7 +113,10 @@ private:
     void loadModel(const std::string& path)
     {
         Assimp::Importer import;
-        const aiScene *scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+        const aiScene *scene = import.ReadFile(path,
+			aiProcess_Triangulate	| 
+			aiProcess_FlipUVs		|
+			aiProcess_CalcTangentSpace);
 
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
         {
@@ -151,6 +160,16 @@ private:
             vector.y = mesh->mNormals[i].y;
             vector.z = mesh->mNormals[i].z;
             vertex.normal = vector;
+
+			vector.x = mesh->mTangents[i].x;
+			vector.y = mesh->mTangents[i].y;
+			vector.z = mesh->mTangents[i].z;
+			vertex.tangent = vector;
+
+			vector.x = mesh->mBitangents[i].x;
+			vector.y = mesh->mBitangents[i].y;
+			vector.z = mesh->mBitangents[i].z;
+			vertex.bitangent = vector;
 
             if (mesh->mTextureCoords[0]) // does the mesh contain texture coordinates?
             {

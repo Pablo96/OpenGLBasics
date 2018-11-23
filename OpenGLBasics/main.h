@@ -122,6 +122,10 @@ public:
     {
         glUniform4f(getLocation(name), x, y, z, w);
     }
+	void setVec3f(const char* name, const float x = 1.0f, const float y = 1.0f, const float z = 1.0f) const
+	{
+		glUniform3f(getLocation(name), x, y, z);
+	}
     void setMat3f(const char* name, const glm::mat3& matrix) const
     {
         glUniformMatrix3fv(getLocation(name), 1, GL_FALSE, &matrix[0][0]);

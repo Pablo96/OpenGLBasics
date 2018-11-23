@@ -7,8 +7,8 @@
 #define WIDTH 1280
 #define HEIGHT 720
 
-glm::vec3 camPos(-2.4f, 1.0f, -2.6f);
-Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 49, -14);
+glm::vec3 camPos (2.0, 0.0, 2.0);
+Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 231.499954, 0.0);
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 // timing
@@ -24,7 +24,6 @@ void initLog()
 int createWindow(GLFWwindow** window);
 int configOpenGL();
 int run(GLFWwindow* window);
-int instanced(GLFWwindow* window);
 void processInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
@@ -49,58 +48,41 @@ int main(int argc, char** argv)
 
 int run(GLFWwindow* window)
 {
-    return instanced(window);
-}
 
-int instanced(GLFWwindow* window)
-{
     glm::vec3 sunDir(1, 1, 1);
 	glm::vec3 sunPos = sunDir * 1.8f;
 
     // SHADERS
-    Shader shader("res\\Shaders\\vertexInstanced.vert", "res\\Shaders\\fragment_lit.frag");
+    Shader shader("res\\Shaders\\4.normal_mapping.vs", "res\\Shaders\\4.normal_mapping.fs");
     shader.bind();
-    shader.setInt("material.diffuse", 0);
-	shader.setInt("material.specular", 1);
-	shader.setInt("material.normal", 2);
-
-	shader.setVec4f("sun.direction", sunDir.x, sunDir.y, sunDir.z, 0);
-    shader.setVec4f("sun.ambient", 0.1f, 0.1f, 0.12f);
-    shader.setVec4f("sun.diffuse", 1.0f, 0.9f, 0.8f);
-	shader.setFloat("sun.energy", 1.2f);
+    shader.setInt("diffuseMap", 0);
+	shader.setInt("normalMap", 1);
 	
 
-	Shader unlitShader("res\\Shaders\\vertexInstanced.vert", "res\\Shaders\\fragment_unlit.frag");
-	unlitShader.setInt("diffuse", 0);
-    
-	
 	// MODELS
 	Texture tireTexD("res\\Textures\\Tire_df_lt.png");
-    Texture tireTexS("res\\Textures\\Tire_sp.png");
 	Texture tireTexN("res\\Textures\\Tire_nm.png");
-    Material tireMat = { &tireTexD, &tireTexS, &tireTexN, 0.5f, 27.0f};
+    Material tireMat = { &tireTexD, nullptr, &tireTexN, 0.5f, 27.0f};
 
 	Texture rimTexD("res\\Textures\\Rim_df.png");
-	Texture rimTexS("res\\Textures\\Rim_sp.png");
 	Texture rimTexN("res\\Textures\\Rim_nm.png");
-	Material rimMat = { &rimTexD, &rimTexS, &rimTexN, 1.5f, 256.0f};
+	Material rimMat = { &rimTexD, nullptr, &rimTexN, 1.5f, 256.0f};
 
     std::vector<Material> materials = { tireMat, rimMat };
-    ModelInstanced model("res\\Models\\wheel.obj", &materials, "Wheel");
+    Model model("res\\Models\\wheel.obj", &materials);
 
 	Texture floorTexD("res\\Textures\\RedBrick\\brick_df.png");
-	Texture floorTexS("res\\Textures\\blue.bmp");
 	Texture floorTexN("res\\Textures\\RedBrick\\brick_nm.png");
-	Material floorMaterial = { &floorTexD, &floorTexS, &floorTexN, 1.0f, 12.0f};
+	Material floorMaterial = { &floorTexD, nullptr, &floorTexN, 1.0f, 12.0f};
 	
 	std::vector<Material> floorMaterials = { floorMaterial };
-	ModelInstanced floor("res\\Models\\plane.obj", &floorMaterials);
+	Model floor("res\\Models\\plane.obj", &floorMaterials);
     
 	Texture sunD("res\\Textures\\white.bmp");
 	Material sunMaterial = { &sunD, nullptr, nullptr, 1.0f, 1.0f };
 
 	std::vector<Material> sunMaterials = { sunMaterial };
-	ModelInstanced sunModel("res\\Models\\sphere_lp.obj", &sunMaterials);
+	Model sunModel("res\\Models\\sphere_lp.obj", &sunMaterials);
 
 	// when instanced is 2 drawcalls 1 per mesh (wheel)
     glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
@@ -120,7 +102,15 @@ int instanced(GLFWwindow* window)
 
 	glClearColor(0.2f, 0.48f, 1.0f, 1.0f);
 	
-    std::cout.flush();
+	// set shader's uniforms
+	shader.bind();
+	shader.setVec3f("lightPos", sunPos.x, sunPos.y, sunPos.z);
+	shader.setMat4f("projection", perspective);
+    
+	
+	
+	
+	std::cout.flush();
     while (!glfwWindowShouldClose(window))
     {
         // TIME
@@ -131,7 +121,6 @@ int instanced(GLFWwindow* window)
         // Logic
 		angle += .5f;
 		angle = (angle > 360.0f) ? 0.0f : angle;
-        PVmat = perspective * cam.GetViewMatrix();
         camPos = cam.Position;
 		modelMat = glm::rotate(glm::radians(angle), glm::vec3(1, 0, 0));
 		
@@ -139,26 +128,17 @@ int instanced(GLFWwindow* window)
         // RENDER CALLS OR CODE
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		unlitShader.bind();
-		transform = PVmat * sunMat;
-		sunModel.setTransforms(1, &transform, 0);
-		sunModel.draw(unlitShader, 1);
-			
+		shader.setVec3f("viewPos", camPos.x, camPos.y, camPos.z);
+		shader.setMat4f("view", cam.GetViewMatrix());
 
-		shader.bind();
-		shader.setVec4f("viewPos", camPos.x, camPos.y, camPos.z);
+		shader.setMat4f("model", sunMat);
+		sunModel.draw(shader);
 
-		transform = PVmat * modelMat;
-		model.setTransforms(1, &transform, 0);
-		model.setTransforms(1, &modelMat, 1);
-		model.setTransforms(1, &normalMat);
-		model.draw(shader, 1);
+		shader.setMat4f("model", modelMat);
+		model.draw(shader);
 
-		transform = PVmat * floorMat;
-		floor.setTransforms(1, &transform, 0);
-		floor.setTransforms(1, &floorMat, 1);
-		floor.setTransforms(1, &floorNMat);
-		floor.draw(shader, 1);
+		shader.setMat4f("model", floorMat);
+		floor.draw(shader);
 		
         // Render the frame
         glfwSwapBuffers(window);
@@ -229,7 +209,7 @@ int createWindow(GLFWwindow** window)
 
     glfwSetCursorPosCallback(*window, mouse_callback);
     // if not set to disable camera doesnt work well
-    glfwSetInputMode(*window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(*window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     // 0 = disable vsync
     glfwSwapInterval(0);
     return 0;
@@ -273,5 +253,5 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
     lastX = (float) xpos;
     lastY = (float) ypos;
 
-    cam.ProcessMouseMovement(xoffset, yoffset);
+    //cam.ProcessMouseMovement(xoffset, yoffset);
 }
