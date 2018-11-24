@@ -4,11 +4,11 @@
 #include <math.h>
 
 #define BUFFER_SIZE 1024
-#define WIDTH 1280
-#define HEIGHT 720
+#define WIDTH 800
+#define HEIGHT 450
 
-glm::vec3 camPos (2.0, 0.0, 2.0);
-Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 231.499954, 0.0);
+glm::vec3 camPos (2.0f, 0.0f, 2.0f);
+Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 231.499954f, 0.0f);
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 // timing
