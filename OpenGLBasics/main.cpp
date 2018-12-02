@@ -61,15 +61,17 @@ int run(GLFWwindow* window)
 
 	// MODELS
 	Texture tireTexD("res\\Textures\\Tire_df_lt.png");
-	Texture tireTexN("res\\Textures\\Tire_nm.png");
+	Texture tireTexN("res\\Models\\Wheel\\Tire_LP_nm.tga");
     Material tireMat = { &tireTexD, nullptr, &tireTexN, 0.5f, 27.0f};
 
 	Texture rimTexD("res\\Textures\\Rim_df.png");
-	Texture rimTexN("res\\Textures\\Rim_nm.png");
+	Texture rimTexN("res\\Models\\Wheel\\Rim_LP_nm.tga");
 	Material rimMat = { &rimTexD, nullptr, &rimTexN, 1.5f, 256.0f};
 
-    std::vector<Material> materials = { tireMat, rimMat };
-    Model model("res\\Models\\wheel.obj", &materials);
+    std::vector<Material> tireMats= { tireMat };
+    Model tireModel("res\\Models\\Wheel\\Tire_LP.obj", &tireMats);
+	std::vector<Material> rimMats = { rimMat };
+	Model rimModel("res\\Models\\Wheel\\Rim_LP.obj", &rimMats);
 
 	Texture floorTexD("res\\Textures\\RedBrick\\brick_df.png");
 	Texture floorTexN("res\\Textures\\RedBrick\\brick_nm.png");
@@ -135,7 +137,8 @@ int run(GLFWwindow* window)
 		sunModel.draw(shader);
 
 		shader.setMat4f("model", modelMat);
-		model.draw(shader);
+		tireModel.draw(shader);
+		rimModel.draw(shader);
 
 		shader.setMat4f("model", floorMat);
 		floor.draw(shader);

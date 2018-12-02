@@ -154,7 +154,7 @@ public:
         unsigned char* data = stbi_load(fileName, &width, &height, &nrChannels, 0);
         if (!data)
         {
-            std::cout << "Failed to load texture" << std::endl;
+            std::cout << "Failed to load texture: "<< fileName << std::endl;
             return;
         }
 
