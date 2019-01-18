@@ -50,7 +50,6 @@ int main(int argc, char** argv)
 int run(GLFWwindow* window)
 {
     return instanced(window);
-    //return noInstance(window);
 }
 
 int instanced(GLFWwindow* window)
@@ -95,7 +94,7 @@ int instanced(GLFWwindow* window)
 	Material rimMat = { &rimTexD, &rimTexS, &rimTexN, 256.0f};
 
     std::vector<Material> materials = { tireMat, rimMat };
-    ModelInstanced model("res\\Models\\wheel.obj", &materials, "Wheel");
+    Model model("res\\Models\\wheel.obj", &materials, "Wheel");
 
 	Texture floorTexD("res\\Textures\\RedBrick\\brick_df.png");
 	Texture floorTexS("res\\Textures\\blue.bmp");
@@ -103,13 +102,13 @@ int instanced(GLFWwindow* window)
 	Material floorMaterial = { &floorTexD, &floorTexS, &floorTexN, 5.0f };
 	
 	std::vector<Material> floorMaterials = { floorMaterial };
-	ModelInstanced floor("res\\Models\\plane.obj", &floorMaterials);
+	Model floor("res\\Models\\plane.obj", &floorMaterials);
     
 	Texture sunD("res\\Textures\\white.bmp");
 	Material sunMaterial = { &sunD, nullptr, nullptr, 1.0f };
 
 	std::vector<Material> sunMaterials = { sunMaterial };
-	ModelInstanced sunModel("res\\Models\\sphere_lp.obj", &sunMaterials);
+	Model sunModel("res\\Models\\sphere_lp.obj", &sunMaterials);
 
 	// Screen plane
 	uint32 vao;
