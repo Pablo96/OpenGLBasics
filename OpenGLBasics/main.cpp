@@ -59,7 +59,7 @@ int instanced(GLFWwindow* window)
 	glm::vec3 sunPos = sunDir * 1.8f;
 
     // SHADERS
-    Shader shader("res\\Shaders\\vertexInstanced.vert", "res\\Shaders\\fragment_PBR.frag");
+    Shader shader("res\\Shaders\\vertexInstanced.vert", "res\\Shaders\\fragment_lit.frag");
     shader.bind();
     shader.setInt("material.albedo", 0);
 	shader.setInt("material.MRA", 1);
@@ -110,24 +110,6 @@ int instanced(GLFWwindow* window)
 
 	std::vector<Material> sunMaterials = { sunMaterial };
 	ModelInstanced sunModel("res\\Models\\sphere_lp.obj", &sunMaterials);
-
-	// when instanced is 2 drawcalls 1 per mesh (wheel)
-    const uint32 wheelsCount = 1;
-
-    glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
-    glm::mat4 PVmat = perspective * cam.GetViewMatrix();
-	
-	glm::mat4 floorMat = glm::translate(glm::vec3(0, -0.8, 0))
-		* glm::scale(glm::vec3(10.0f, 10.0f, 10.0f));
-	glm::mat3 floorNMat = glm::transpose(glm::inverse(glm::mat3(floorMat)));
-    
-	glm::mat4 modelMat = glm::rotate(glm::radians(0.0f), glm::vec3(0, 1, 0));
-    glm::mat3 normalMat = glm::transpose(glm::inverse(glm::mat3(modelMat)));
-	
-	glm::mat4 sunMat = glm::translate(sunPos * 5.0f) * glm::scale(glm::vec3(0.2f));
-	
-	glm::mat4 transform;
-	float angle = 0.0f;
 
 	// Screen plane
 	uint32 vao;
@@ -184,6 +166,23 @@ int instanced(GLFWwindow* window)
 
 	}
 
+	//#################################################
+	//					MATRICES
+	//#################################################
+
+    glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
+    glm::mat4 PVmat = perspective * cam.GetViewMatrix();
+	
+	glm::mat4 floorMat = glm::translate(glm::vec3(0, -0.8, 0))
+					   * glm::scale(glm::vec3(10.0f, 10.0f, 10.0f));
+    
+	glm::mat4 modelMat = glm::rotate(glm::radians(0.0f), glm::vec3(0, 1, 0));
+	
+	glm::mat4 sunMat = glm::translate(sunPos * 5.0f) * glm::scale(glm::vec3(0.2f));
+	
+	glm::mat4 transform;
+	float angle = 0.0f;
+
 	
 	// FRAMEBUFFER
 	uint32 fbo;
@@ -195,7 +194,7 @@ int instanced(GLFWwindow* window)
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-	// Create a texxture attachment
+	// Create a texture attachment
 	uint32 texture;
 	{
 		glGenTextures(1, &texture);
@@ -299,7 +298,6 @@ int instanced(GLFWwindow* window)
         PVmat = perspective * cam.GetViewMatrix();
         camPos = cam.Position;
 		modelMat = glm::rotate(glm::radians(angle), glm::vec3(1, 0, 0));
-		normalMat = glm::transpose(glm::inverse(glm::mat3(modelMat)));
 		
 
         // RENDER CALLS OR CODE
@@ -346,13 +344,11 @@ int instanced(GLFWwindow* window)
 			transform = PVmat * modelMat;
 			model.setTransforms(1, &transform, 0);
 			model.setTransforms(1, &modelMat, 1);
-			model.setTransforms(1, &normalMat);
 			model.draw(shader, 1);
 
 			transform = PVmat * floorMat;
 			floor.setTransforms(1, &transform, 0);
 			floor.setTransforms(1, &floorMat, 1);
-			floor.setTransforms(1, &floorNMat);
 			floor.draw(shader, 1);
 		}
 		

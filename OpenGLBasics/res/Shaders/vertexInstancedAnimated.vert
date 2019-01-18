@@ -4,6 +4,8 @@ layout(location = 1)in vec3 normal;
 layout(location = 2)in vec2 texCoord;
 layout(location = 4)in mat4 transform;
 layout(location = 8)in mat4 model;
+layout(location = 12)in uvec4 indices; //unisgned int vector 4
+layout(location = 13)in vec4 weights;
 
 uniform mat4 lightSpaceMatrix;
 

@@ -1,9 +1,8 @@
 #version 330
 in vec2 uvCoord;
-in vec4 vNormal;
+in vec3 vNormal;
 in vec4 vPos;
 in vec4 lightSpacePos;
-in mat3 tbnMatrix;
 
 // OUT VARIABLES
 out vec4 color;
@@ -11,13 +10,7 @@ out vec4 color;
 // UNIFORMS
 uniform vec4 viewPos;
 uniform sampler2D shadowMap;
-uniform struct Material
-{
-    sampler2D diffuse;
-    sampler2D specular;
-    sampler2D normal;
-    float shininess;
-} material;
+uniform sampler2D diffuse;
 
 uniform struct DirLight
 {
@@ -25,7 +18,6 @@ uniform struct DirLight
 
     vec4 ambient;
     vec4 diffuse;
-    vec4 specular;
     float energy;
 } sun;
 
@@ -63,25 +55,17 @@ vec4 CalcDirLight(DirLight light, vec4 normal, vec4 viewDir)
     float shadow = ShadowCalulation(lightSpacePos, light.direction, normal);
     // diffuse shading
     float diff = max(dot(normal, lightDir), 0.0);
-    // specular shading
-    //vec4 halfwayDir = normalize(viewDir - lightDir);
-    //float spec = pow(max(dot(normal, halfwayDir), 0.0), material.shininess);
-    vec4 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     // combine results
-    vec4 ambient  = light.ambient  * texture(material.diffuse, uvCoord);
-    vec4 diffuse  = light.diffuse  * diff * texture(material.diffuse, uvCoord) * (light.energy * 0.1);
-    vec4 specular = light.specular * spec * texture(material.specular, uvCoord).y;
-    float AO = texture(material.specular, uvCoord).z;
-    // (ambient + (diffuse + specular) * shadow) * AO
-    return (ambient + (diffuse + specular) * (1 - shadow)) * AO;
+    vec4 ambient  = light.ambient  * texture(diffuse, uvCoord);
+    vec4 diffuse  = light.diffuse  * diff * texture(diffuse, uvCoord) * (light.energy * 0.1);
+    // (ambient + (diffuse + specular) * shadow)
+    return ambient + diffuse * (1 - shadow);
 }
 
 void main()
 {
     vec4 viewDir = normalize(viewPos - vPos);
-    //vec4 normal  = vec4(normalize(tbnMatrix * (255.0/128.0 * texture(material.normal, uvCoord).xyz - 1)), 0.0);
-    vec4 normal = vNormal;
+    vec4 normal = vec4(vNormal, 0);
     color = CalcDirLight(sun, normal, viewDir);
 
     // apply gamma correction
