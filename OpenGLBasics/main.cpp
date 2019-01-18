@@ -61,11 +61,11 @@ int run(GLFWwindow* window)
 
 	// MODELS
 	Texture tireTexD("res\\Textures\\Tire_df_lt.png");
-	Texture tireTexN("res\\Models\\Wheel\\Tire_LP_nm.tga");
+	Texture tireTexN("res\\Models\\Wheel\\Tire_LP_nm.png");
     Material tireMat = { &tireTexD, nullptr, &tireTexN, 0.5f, 27.0f};
 
 	Texture rimTexD("res\\Textures\\Rim_df.png");
-	Texture rimTexN("res\\Models\\Wheel\\Rim_LP_nm.tga");
+	Texture rimTexN("res\\Models\\Wheel\\Rim_LP_nm.png");
 	Material rimMat = { &rimTexD, nullptr, &rimTexN, 1.5f, 256.0f};
 
     std::vector<Material> tireMats= { tireMat };
