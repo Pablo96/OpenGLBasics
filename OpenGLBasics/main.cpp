@@ -175,7 +175,7 @@ int run(GLFWwindow* window)
 	
 	glm::mat4 sunMat = glm::translate(sunPos * 5.0f) * glm::scale(glm::vec3(0.2f));
 	
-	glm::mat4 animMeshMat = glm::translate(glm::vec3(-2, 0.0, 5));
+	glm::mat4 animMeshMat = glm::translate(glm::vec3(-1, 0.0, 0.0));
 
 	glm::mat4 transform;
 	float angle = 0.0f;
@@ -309,13 +309,13 @@ int run(GLFWwindow* window)
 			shadowMap.bind();
 
 			shadowMap.setMat4f("model", modelMat);
-			model.draw(shader, 1);
+			model.draw(shader, 1, deltaTime);
 
-			shadowMap.setMat4f("model", animMeshMat);
-			animatedMesh.draw(shader, 1);
+			//shadowMap.setMat4f("model", animMeshMat);
+			//animatedMesh.draw(shader, 1, deltaTime);
 			
 			shadowMap.setMat4f("model", floorMat);
-			floor.draw(shader, 1);
+			floor.draw(shader, 1, deltaTime);
 		}
 		
 
@@ -331,7 +331,7 @@ int run(GLFWwindow* window)
 			unlitShader.bind();
 			transform = PVmat * sunMat;
 			sunModel.setTransforms(1, &transform, 0);
-			sunModel.draw(unlitShader, 1);
+			sunModel.draw(unlitShader, 1, deltaTime);
 			
 
 			shader.bind();
@@ -344,17 +344,17 @@ int run(GLFWwindow* window)
 			transform = PVmat * modelMat;
 			model.setTransforms(1, &transform, 0);
 			model.setTransforms(1, &modelMat, 1);
-			model.draw(shader, 1);
+			model.draw(shader, 1, deltaTime);
 
 			transform = PVmat * animMeshMat;
 			animatedMesh.setTransforms(1, &transform, 0);
 			animatedMesh.setTransforms(1, &animMeshMat, 1);
-			animatedMesh.draw(shader, 1);
+			animatedMesh.draw(shader, 1, deltaTime);
 
 			transform = PVmat * floorMat;
 			floor.setTransforms(1, &transform, 0);
 			floor.setTransforms(1, &floorMat, 1);
-			floor.draw(shader, 1);
+			floor.draw(shader, 1, deltaTime);
 		}
 		
 

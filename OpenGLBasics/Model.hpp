@@ -4,30 +4,54 @@
 #include <GL/glew.h>
 #include <GLM/glm.hpp>
 #include <GLM/gtx/quaternion.hpp>
+#include <GLM/gtx/matrix_interpolation.hpp>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <vector>
 #include <unordered_map>
 
-//###################################################################
-//				ANIMATION AND POSE
-//###################################################################
 
-typedef std::vector<glm::mat4> Pose;
+
+//###################################################################
+//				BONE, POSE AND ANIMATION
+//###################################################################
+#define MAX_VERTEX_BONES 4	// Max number of bones per vertex
+
+struct Bone
+{
+	uint32 id;
+	glm::mat4 offsetMatrix;
+	std::vector<Bone> children;
+};
+
+// TODO: add scaling
+// Note: this are relative to parent bone.
+struct BoneTransform
+{
+	glm::vec3 position;
+	glm::quat rotation;
+};
+
+struct Pose
+{
+	float timeStamp; // time is played (in seconds)
+	std::vector<BoneTransform> transforms;
+};
 
 struct Animation
 {
-	float duration; // duration in ticks
-	float ticksPerSec;
-
+	float duration = 0; // duration in ticks
+	float ticksPerSec = 0;
+	float currentTime = 0; // current time in seconds
 	std::vector<Pose> poses;
 };
 
-
+void searchPoses(const Animation& anim, Pose& pose1, Pose& pose2, const float currentTime);
+glm::mat4 interpolatePoseTransform(const BoneTransform& trans1, const BoneTransform& trans2, const float factor);
 
 //###################################################################
-//				MESH AND MODEL
+//				VERTEX, MESH AND MODEL
 //###################################################################
 
 struct Vertex
@@ -37,13 +61,6 @@ struct Vertex
     glm::vec2 uvCoord;
 	glm::uvec4 indices = glm::vec4(0, 0, 0, 0); //Bones indices. Up to 4 bones
 	glm::vec4 weights  = glm::vec4(0, 0, 0, 0);	//Bones weight. 1 per bone (4 total)
-};
-
-#define MAX_VERTEX_BONES 4	// Max number of bones per vertex
-
-struct Bone
-{
-	glm::mat4 offsetMatrix;
 };
 
 class Mesh
@@ -205,11 +222,14 @@ class Model
     std::string directory;
     std::vector<Material>* materials;
 	
-	// Natural pose
-	std::unordered_map<std::string, Bone> skeleton;
+	// Skeleton AKA bone hierarchy of the mesh
+	Bone* skeleton;
 
 	// Animations
 	std::vector<Animation> animations;
+
+	// Animated transforms
+	std::vector<glm::mat4> animatedTransforms;
 
 	// DEBUG NAME
 	const std::string name;
@@ -222,6 +242,9 @@ public:
 
 	void draw(Shader& shader, const uint32 count, const float deltaTime)
     {
+		if (animations.size() > 0)
+			animate(deltaTime);
+
         if (materials && materials->size() > 0)
             for (uint32 i = 0; i < meshes.size(); i++)
             {
@@ -232,12 +255,7 @@ public:
 				
 				if ((*materials)[i].specular)
                     (*materials)[i].specular->bind(1);
-				/*
-				if ((*materials)[i].normal)
-					(*materials)[i].normal->bind(2);
-				*/
-
-				//shader.setFloat("material.shininess", (*materials)[i].shininess);
+				
                 meshes[i].draw(count);
             }
         else
@@ -284,7 +302,8 @@ private:
 			processAnimations(scene);
 		
     }
-    void processNode(aiNode *node, const aiScene *scene)
+    
+	void processNode(aiNode *node, const aiScene *scene)
     {
         // process all the node's meshes (if any)
         for (unsigned int i = 0; i < node->mNumMeshes; i++)
@@ -298,7 +317,8 @@ private:
             processNode(node->mChildren[i], scene);
         }
     }
-    Mesh processMesh(aiMesh *mesh, const aiScene *scene)
+    
+	Mesh processMesh(aiMesh *mesh, const aiScene *scene)
     {
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
@@ -345,7 +365,6 @@ private:
 			for (uint32 i = 0; i < mesh->mNumBones; i++)
 			{
 				aiBone* bone = mesh->mBones[i];
-				skeleton.emplace(std::string(bone->mName.data, bone->mName.length), *(Bone*)&bone->mOffsetMatrix);
 
 				for (uint32 j = 0; j < MAX_VERTEX_BONES; j++)
 				{
@@ -368,6 +387,7 @@ private:
 
         return Mesh(vertices, indices);
     }
+	
 	void processAnimations(const aiScene *scene)
 	{
 		for (uint32 i = 0; i < scene->mNumAnimations; i++)
@@ -430,13 +450,81 @@ private:
 						transform *= glm::translate(translation);
 					}
 
-					animation.poses[k].emplace_back(transform);
+					//animation.poses[k].transforms.emplace_back(transform);
 				}
 			}
 
 		}
 	}
+
+
+	void animate(const float deltaTime)
+	{
+		Animation animation = animations[0];
+			
+		float durationSec = animation.duration / animation.ticksPerSec;
+		animation.currentTime += deltaTime;
+
+		if (animation.currentTime > durationSec)
+			animation.currentTime = animation.currentTime - durationSec;
+
+		Pose pose1, pose2;
+		searchPoses(animation, pose1, pose2, deltaTime);
+
+		// interpolation factor between 0.0f  and 1.0f
+		float factor = (pose2.timeStamp - pose1.timeStamp) / deltaTime;
+
+		glm::mat4 transform;
+
+		transform = interpolatePoseTransform(pose1.transforms[skeleton->id], pose2.transforms[skeleton->id], factor);
+			
+		animatedTransforms.emplace_back(transform);
+
+		for (uint32 j = 0; j < skeleton->children.size(); j++)
+		{
+			applyAnimation(&skeleton->children[j], transform, pose1, pose2, factor);
+		}
+	}
+
+	void applyAnimation(Bone* bone, const glm::mat4& parentTransform,
+						const Pose& pose1, const Pose& pose2, const float factor)
+	{
+		glm::mat4 transform;
+
+		transform = interpolatePoseTransform(pose1.transforms[bone->id], pose2.transforms[bone->id], factor);
+
+		animatedTransforms.emplace_back(transform);
+
+		for (uint32 j = 0; j < skeleton->children.size(); j++)
+		{
+			applyAnimation(&skeleton->children[j], parentTransform * transform, pose1, pose2, factor);
+		}
+	}
 };
 
 
+void searchPoses(const Animation& anim, Pose& pose1, Pose& pose2, const float currentTime)
+{
+	pose1 = anim.poses[0];
+	for (size_t i = 1; i < anim.poses.size(); i++)
+	{
+		if (anim.poses[i].timeStamp > currentTime)
+		{
+			pose2 = anim.poses[i];
+			pose1 = anim.poses[i - 1];
+			return;
+		}
+	}
+}
+
+glm::mat4 interpolatePoseTransform(const BoneTransform& trans1, const BoneTransform& trans2, const float factor)
+{
+	glm::quat slerpQuat = glm::slerp(trans1.rotation, trans2.rotation, factor);
+	glm::mat4 rotMat = glm::toMat4(slerpQuat);
+
+	glm::vec3 lerpVec = glm::mix(trans1.position, trans2.position, factor);
+	glm::mat4 posMat = glm::translate(lerpVec);
+
+	return posMat * rotMat;
+}
 

@@ -18,7 +18,7 @@ void main()
     gl_Position = transform * pos;
     
     uvCoord = texCoord;
-    vNormal = normal;
+    vNormal = mat3(model) * normal;
     vPos = model * pos;
 
     lightSpacePos =  lightSpaceMatrix * vPos;
