@@ -238,13 +238,25 @@ public:
         : materials(inMaterials), name(inName)
     {
         loadModel(path);
-    }
+
+		for (uint32 i = 0; i < 50; i++)
+		{
+			animatedTransforms.emplace_back(glm::mat4(1.0f));
+		}
+	}
 
 	void draw(Shader& shader, const uint32 count, const float deltaTime)
     {
+		/*
+		// animate skeleton
 		if (animations.size() > 0)
 			animate(deltaTime);
 
+		*/
+		// send animated transforms
+		shader.setMat4fVec("bones", animatedTransforms);
+
+		// set materials
         if (materials && materials->size() > 0)
             for (uint32 i = 0; i < meshes.size(); i++)
             {

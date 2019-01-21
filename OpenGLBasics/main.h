@@ -130,7 +130,10 @@ public:
     {
         glUniformMatrix4fv(getLocation(name), 1, GL_FALSE, &matrix[0][0]);
     }
-
+	void setMat4fVec(const char* name, const std::vector<glm::mat4>& matrixvec) const
+	{
+		glUniformMatrix4fv(getLocation(name), matrixvec.size(), GL_FALSE, &matrixvec[0][0][0]);
+	}
 private:
     int getLocation(const char* name) const
     {
