@@ -212,7 +212,7 @@ int createWindow(GLFWwindow** window)
 
     glfwSetCursorPosCallback(*window, mouse_callback);
     // if not set to disable camera doesnt work well
-    glfwSetInputMode(*window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(*window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     // 0 = disable vsync
     glfwSwapInterval(0);
     return 0;
@@ -256,5 +256,5 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
     lastX = (float) xpos;
     lastY = (float) ypos;
 
-    //cam.ProcessMouseMovement(xoffset, yoffset);
+    cam.ProcessMouseMovement(xoffset, yoffset);
 }
