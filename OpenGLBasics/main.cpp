@@ -24,7 +24,6 @@ void initLog()
 int createWindow(GLFWwindow** window);
 int configOpenGL();
 int run(GLFWwindow* window);
-int instanced(GLFWwindow* window);
 void processInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
@@ -49,19 +48,12 @@ int main(int argc, char** argv)
 
 int run(GLFWwindow* window)
 {
-    return instanced(window);
-}
-
-int instanced(GLFWwindow* window)
-{
     glm::vec3 sunDir(1, 1, 1);
 	glm::vec3 sunPos = sunDir * 1.8f;
 
     // SHADERS
     Shader shader("res\\Shaders\\vertexInstanced.vert", "res\\Shaders\\fragment_lit.frag");
     shader.bind();
-    shader.setInt("material.albedo", 0);
-	shader.setInt("material.MRA", 1);
 	shader.setInt("shadowMap", 2);
 
 	shader.setVec4f("sun.direction", sunDir.x, sunDir.y, sunDir.z, 0);
@@ -86,12 +78,12 @@ int instanced(GLFWwindow* window)
     Texture tireTexD("res\\Textures\\Tire_df.png");
     Texture tireTexS("res\\Textures\\Tire_sp.png");
 	Texture tireTexN("res\\Textures\\Tire_nm_inv.png");
-    Material tireMat = { &tireTexD, &tireTexS, &tireTexN, 27.0f};
+    Material tireMat = { glm::vec4(0, 0, 1, 1), &tireTexD, &tireTexS, &tireTexN, 27.0f};
 
 	Texture rimTexD("res\\Textures\\Rim_df.png");
 	Texture rimTexS("res\\Textures\\Rim_sp.png");
 	Texture rimTexN("res\\Textures\\Rim_nm.png");
-	Material rimMat = { &rimTexD, &rimTexS, &rimTexN, 256.0f};
+	Material rimMat = { glm::vec4(1, 1, 1, 1), &rimTexD, &rimTexS, &rimTexN, 256.0f};
 
     std::vector<Material> materials = { tireMat, rimMat };
     Model model("res\\Models\\wheel.obj", &materials, "Wheel");
@@ -99,16 +91,20 @@ int instanced(GLFWwindow* window)
 	Texture floorTexD("res\\Textures\\RedBrick\\brick_df.png");
 	Texture floorTexS("res\\Textures\\blue.bmp");
 	Texture floorTexN("res\\Textures\\RedBrick\\brick_nm.png");
-	Material floorMaterial = { &floorTexD, &floorTexS, &floorTexN, 5.0f };
+	Material floorMaterial = { glm::vec4(1, 1, 1, 1), &floorTexD, &floorTexS, &floorTexN, 5.0f };
 	
 	std::vector<Material> floorMaterials = { floorMaterial };
 	Model floor("res\\Models\\plane.obj", &floorMaterials);
     
-	Texture sunD("res\\Textures\\white.bmp");
-	Material sunMaterial = { &sunD, nullptr, nullptr, 1.0f };
+	Material sunMaterial = { glm::vec4(1, 0.5f, 0, 1), nullptr, nullptr, nullptr, 1.0f };
 
 	std::vector<Material> sunMaterials = { sunMaterial };
 	Model sunModel("res\\Models\\sphere_lp.obj", &sunMaterials);
+
+	// Animated Mesh
+	Material animatedMeshMaterial = { glm::vec4(0.8f, 0.8f, 0.8f, 1), nullptr, nullptr, nullptr, 1.0f };
+	std::vector<Material> animatedMeshMaterials = { animatedMeshMaterial };
+	Model animatedMesh("res\\Models\\AnimatedCubeArm\\AnimatedCubeArm.dae", &animatedMeshMaterials);
 
 	// Screen plane
 	uint32 vao;
@@ -179,6 +175,8 @@ int instanced(GLFWwindow* window)
 	
 	glm::mat4 sunMat = glm::translate(sunPos * 5.0f) * glm::scale(glm::vec3(0.2f));
 	
+	glm::mat4 animMeshMat = glm::translate(glm::vec3(-2, 0.0, 5));
+
 	glm::mat4 transform;
 	float angle = 0.0f;
 
@@ -313,6 +311,9 @@ int instanced(GLFWwindow* window)
 			shadowMap.setMat4f("model", modelMat);
 			model.draw(shader, 1);
 
+			shadowMap.setMat4f("model", animMeshMat);
+			animatedMesh.draw(shader, 1);
+			
 			shadowMap.setMat4f("model", floorMat);
 			floor.draw(shader, 1);
 		}
@@ -344,6 +345,11 @@ int instanced(GLFWwindow* window)
 			model.setTransforms(1, &transform, 0);
 			model.setTransforms(1, &modelMat, 1);
 			model.draw(shader, 1);
+
+			transform = PVmat * animMeshMat;
+			animatedMesh.setTransforms(1, &transform, 0);
+			animatedMesh.setTransforms(1, &animMeshMat, 1);
+			animatedMesh.draw(shader, 1);
 
 			transform = PVmat * floorMat;
 			floor.setTransforms(1, &transform, 0);

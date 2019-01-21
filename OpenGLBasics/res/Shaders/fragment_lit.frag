@@ -10,7 +10,8 @@ out vec4 color;
 // UNIFORMS
 uniform vec4 viewPos;
 uniform sampler2D shadowMap;
-uniform sampler2D diffuse;
+uniform sampler2D diffuseTex;
+uniform vec4 diffuseColor;
 
 uniform struct DirLight
 {
@@ -56,8 +57,18 @@ vec4 CalcDirLight(DirLight light, vec4 normal, vec4 viewDir)
     // diffuse shading
     float diff = max(dot(normal, lightDir), 0.0);
     // combine results
-    vec4 ambient  = light.ambient  * texture(diffuse, uvCoord);
-    vec4 diffuse  = light.diffuse  * diff * texture(diffuse, uvCoord) * (light.energy * 0.1);
+    vec4 ambient  = light.ambient;
+    vec4 diffuse  = light.diffuse * diff * (light.energy * 0.1);
+    if (length(diffuseColor.xyz) < 1.73)
+    {
+        ambient *= diffuseColor;
+        diffuse *= diffuseColor;
+    }
+    else
+    {
+        diffuse *= texture(diffuseTex, uvCoord);
+        ambient *= texture(diffuseTex, uvCoord);
+    }
     // (ambient + (diffuse + specular) * shadow)
     return ambient + diffuse * (1 - shadow);
 }

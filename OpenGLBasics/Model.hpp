@@ -3,20 +3,47 @@
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <GLM/glm.hpp>
+#include <GLM/gtx/quaternion.hpp>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <vector>
+#include <unordered_map>
 
+//###################################################################
+//				ANIMATION AND POSE
+//###################################################################
+
+typedef std::vector<glm::mat4> Pose;
+
+struct Animation
+{
+	float duration; // duration in ticks
+	float ticksPerSec;
+
+	std::vector<Pose> poses;
+};
+
+
+
+//###################################################################
+//				MESH AND MODEL
+//###################################################################
 
 struct Vertex
 {
     glm::vec3 pos;
     glm::vec3 normal;
     glm::vec2 uvCoord;
-	glm::vec3 tangent;
-	glm::uvec4 indices; //Bones indices. Up to 4 bones
-	glm::vec4 weights;
+	glm::uvec4 indices = glm::vec4(0, 0, 0, 0); //Bones indices. Up to 4 bones
+	glm::vec4 weights  = glm::vec4(0, 0, 0, 0);	//Bones weight. 1 per bone (4 total)
+};
+
+#define MAX_VERTEX_BONES 4	// Max number of bones per vertex
+
+struct Bone
+{
+	glm::mat4 offsetMatrix;
 };
 
 class Mesh
@@ -80,7 +107,6 @@ public:
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uvCoord));
-		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, tangent));
 
         // Transform attribute
         /*
@@ -133,7 +159,8 @@ public:
 		attribLocation += 4;
 		glEnableVertexAttribArray(attribLocation);
 		glBindBuffer(GL_ARRAY_BUFFER, IBO);
-		glVertexAttribPointer(attribLocation, 4, GL_UNSIGNED_INT, GL_FALSE, 4 * sizeof(uint32) * 4, (void*)0);
+		// Here we use 'glVertexAttribIPointer' so it stores Integer and do not convert it to float
+		glVertexAttribIPointer(attribLocation, 4, GL_UNSIGNED_INT, 4 * sizeof(uint32) * 4, (void*)0);
 		attribLocation += 1;
 		glEnableVertexAttribArray(attribLocation);
 		glBindBuffer(GL_ARRAY_BUFFER, WBO);
@@ -177,6 +204,14 @@ class Model
     std::vector<Mesh> meshes;
     std::string directory;
     std::vector<Material>* materials;
+	
+	// Natural pose
+	std::unordered_map<std::string, Bone> skeleton;
+
+	// Animations
+	std::vector<Animation> animations;
+
+	// DEBUG NAME
 	const std::string name;
 public:
     Model(const std::string& path, std::vector<Material>* inMaterials = nullptr, const std::string& inName="mesh")
@@ -185,13 +220,16 @@ public:
         loadModel(path);
     }
 
-    void draw(Shader& shader, const uint32 count)
+	void draw(Shader& shader, const uint32 count, const float deltaTime)
     {
         if (materials && materials->size() > 0)
             for (uint32 i = 0; i < meshes.size(); i++)
             {
-                if ((*materials)[i].diffuse)
+				shader.setVec4f("diffuseColor", (*materials)[i].diffuseCol.x, (*materials)[i].diffuseCol.y, (*materials)[i].diffuseCol.z);
+                
+				if ((*materials)[i].diffuse)
                     (*materials)[i].diffuse->bind(0);
+				
 				if ((*materials)[i].specular)
                     (*materials)[i].specular->bind(1);
 				/*
@@ -226,10 +264,11 @@ private:
     {
         Assimp::Importer import;
         const aiScene *scene = import.ReadFile(path, 
-			  aiProcess_Triangulate
-			| aiProcess_CalcTangentSpace
-			| aiProcess_FlipUVs
+			  aiProcess_FlipUVs
+			| aiProcess_Triangulate
+			| aiProcess_LimitBoneWeights
 			| aiProcess_GenSmoothNormals
+			| aiProcess_CalcTangentSpace
 		);
 
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
@@ -240,6 +279,10 @@ private:
         directory = path.substr(0, path.find_last_of('/'));
 
         processNode(scene->mRootNode, scene);
+
+		if (scene->HasAnimations())
+			processAnimations(scene);
+		
     }
     void processNode(aiNode *node, const aiScene *scene)
     {
@@ -259,8 +302,9 @@ private:
     {
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
-
-        for (unsigned int i = 0; i < mesh->mNumVertices; i++)
+		
+		// process vertex data
+        for (uint32 i = 0; i < mesh->mNumVertices; i++)
         {
             Vertex vertex;
             // process vertex positions, normals and texture coordinates
@@ -274,13 +318,15 @@ private:
             vector.y = mesh->mNormals[i].y;
             vector.z = mesh->mNormals[i].z;
             vertex.normal = vector;
+			
+			// store tangents and bitangets
+			if (mesh->HasTangentsAndBitangents())
+			{
 
-			vector.x = mesh->mTangents[i].x;
-			vector.y = mesh->mTangents[i].y;
-			vector.z = mesh->mTangents[i].z;
-			vertex.tangent = vector;
+			}
 
-            if (mesh->mTextureCoords[0]) // does the mesh contain texture coordinates?
+			// store texture coordinates
+            if (mesh->HasTextureCoords(0))
             {
                 glm::vec2 vec;
                 vec.x = mesh->mTextureCoords[0][i].x;
@@ -289,11 +335,31 @@ private:
             }
             else
                 vertex.uvCoord = glm::vec2(0.0f, 0.0f);
+
             vertices.push_back(vertex);
         }
 
+		if (mesh->HasBones())
+		{
+			// process bones data
+			for (uint32 i = 0; i < mesh->mNumBones; i++)
+			{
+				aiBone* bone = mesh->mBones[i];
+				skeleton.emplace(std::string(bone->mName.data, bone->mName.length), *(Bone*)&bone->mOffsetMatrix);
+
+				for (uint32 j = 0; j < MAX_VERTEX_BONES; j++)
+				{
+					uint32 vertexID = mesh->mBones[i]->mWeights[j].mVertexId;
+					float weight = mesh->mBones[i]->mWeights[j].mWeight;
+
+					vertices[vertexID].weights[j] = weight;
+					vertices[vertexID].indices[j] = i;
+				}
+			}
+		}
+
         // process indices
-        for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+        for (uint32 i = 0; i < mesh->mNumFaces; i++)
         {
             aiFace face = mesh->mFaces[i];
             for (unsigned int j = 0; j < face.mNumIndices; j++)
@@ -302,9 +368,75 @@ private:
 
         return Mesh(vertices, indices);
     }
+	void processAnimations(const aiScene *scene)
+	{
+		for (uint32 i = 0; i < scene->mNumAnimations; i++)
+		{
+			const aiAnimation* assimpAnim = scene->mAnimations[i];
+			Animation animation;
+
+			animation.duration = (float)assimpAnim->mDuration;
+			animation.ticksPerSec = (float)assimpAnim->mTicksPerSecond;
+
+			// numPoses is the higher num of transforms
+			uint32 numPoses = 0;
+			for (uint32 j = 0; j < assimpAnim->mNumChannels; j++)
+			{
+				const aiNodeAnim* channel = assimpAnim->mChannels[j];
+				uint32 num =  (channel->mNumPositionKeys > channel->mNumRotationKeys)
+						   ?  (channel->mNumPositionKeys > channel->mNumScalingKeys) ? channel->mNumPositionKeys : channel->mNumScalingKeys
+						   :  (channel->mNumRotationKeys > channel->mNumScalingKeys) ? channel->mNumRotationKeys : channel->mNumScalingKeys;
+				numPoses = (num > numPoses) ? num : numPoses;
+			}
+			animation.poses.resize(numPoses);
+
+			// each channel is a bone with all its transformations
+			for (uint32 j = 0; j < assimpAnim->mNumChannels; j++)
+			{
+				const aiNodeAnim* channel = assimpAnim->mChannels[j];
+				
+
+				for (uint32 k = 0; k < numPoses; k++)
+				{
+					glm::mat4 transform;
+					if (channel->mNumScalingKeys >= k)
+					{
+						const auto scaleKey = channel->mScalingKeys[k].mValue;
+						glm::vec3 scale;
+						scale.x = scaleKey.x;
+						scale.y = scaleKey.y;
+						scale.z = scaleKey.z;
+
+						transform = glm::scale(scale);
+					}
+					if (channel->mNumRotationKeys >= k)
+					{
+						const auto rotKey = channel->mRotationKeys[k].mValue;
+						glm::quat quaternion;
+						quaternion.x = rotKey.x;
+						quaternion.y = rotKey.y;
+						quaternion.z = rotKey.z;
+						quaternion.w = rotKey.w;
+
+						transform *= glm::toMat4(quaternion);
+					}
+					if (channel->mNumPositionKeys >= k)
+					{
+						const auto posKey= channel->mPositionKeys[k].mValue;
+						glm::vec3 translation;
+						translation.x = posKey.x;
+						translation.y = posKey.y;
+						translation.z = posKey.z;
+						transform *= glm::translate(translation);
+					}
+
+					animation.poses[k].emplace_back(transform);
+				}
+			}
+
+		}
+	}
 };
 
 
-//###################################################################
-//				ANIMATED MODEL & MESH
-//###################################################################
+

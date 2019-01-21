@@ -182,6 +182,7 @@ public:
 
 struct Material
 {
+	glm::vec4 diffuseCol;
     Texture* diffuse;
     Texture* specular;
 	Texture* normal;

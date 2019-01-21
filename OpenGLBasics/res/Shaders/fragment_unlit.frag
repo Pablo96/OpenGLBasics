@@ -4,6 +4,7 @@ in vec2 uvCoord;
 
 
 // UNIFORMS
+uniform vec4 diffuseColor;
 uniform sampler2D diffuse;
 
 
@@ -13,5 +14,8 @@ out vec4 color;
 
 void main()
 {
-    color = texture(diffuse, uvCoord);
+    if (length(diffuseColor) < 1.73)
+        color = diffuseColor;
+    else
+        color = texture(diffuse, uvCoord);
 }
