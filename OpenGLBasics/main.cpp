@@ -1,6 +1,10 @@
 #include "main.h"
 #include "Model.hpp"
 #include <GLFW/glfw3.h>
+
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 #include <math.h>
 
 #define BUFFER_SIZE 1024
@@ -24,6 +28,7 @@ void initLog()
 int createWindow(GLFWwindow** window);
 int configOpenGL();
 int run(GLFWwindow* window);
+void setUpGUI(GLFWwindow* window);
 void processInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
@@ -48,6 +53,8 @@ int main(int argc, char** argv)
 
 int run(GLFWwindow* window)
 {
+	setUpGUI(window);
+
     glm::vec3 sunDir(1, 1, 1);
 	glm::vec3 sunPos = sunDir * 1.8f;
 
@@ -78,10 +85,10 @@ int run(GLFWwindow* window)
 
 	
 	// MODELS
-    Model model("res\\Models\\wheel.obj", &materials, "Wheel");
-	Model floor("res\\Models\\plane.obj", &floorMaterials);
-	Model sunModel("res\\Models\\sphere_lp.obj", &sunMaterials);
-	Model animatedMesh("res\\Models\\AnimatedCubeArm\\AnimatedCubeArm.dae", &animatedMeshMaterials);
+    //Model model("res\\Models\\wheel.obj", &materials, "Wheel");
+	//Model floor("res\\Models\\plane.obj", &floorMaterials);
+	//Model sunModel("res\\Models\\sphere_lp.obj", &sunMaterials);
+	Model animatedMesh("res\\Models\\AnimatedCubeArm\\AnimatedCubeArm.gltf", &animatedMeshMaterials);
 
 
 	//#################################################
@@ -103,8 +110,8 @@ int run(GLFWwindow* window)
 	glm::mat4 transform;
 	float angle = 0.0f;
 
+	glm::vec3 translation(1, 0, 0);
 	glClearColor(0.2f, 0.48f, 1.0f, 1.0f);
-	
 	
     std::cout.flush();
     while (!glfwWindowShouldClose(window))
@@ -113,20 +120,21 @@ int run(GLFWwindow* window)
         float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-        std::cout << deltaTime * 1000 << "ms" << std::endl;
         // Logic
 		angle += .5f;
 		angle = (angle > 360.0f) ? 0.0f : angle;
         PVmat = perspective * cam.GetViewMatrix();
         camPos = cam.Position;
-		modelMat = glm::rotate(glm::radians(angle), glm::vec3(1, 0, 0));
+		animMeshMat = glm::translate(translation);
 		
 
         // RENDER CALLS OR CODE
-
-	
-
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
 		/*
 		unlitShader.bind();
 		transform = PVmat * sunMat;
@@ -156,7 +164,18 @@ int run(GLFWwindow* window)
 		animatedMesh.setTransforms(1, &animMeshMat, 1);
 		animatedMesh.draw(shader, 1, deltaTime);
 
-		
+
+		// GUI DATA
+		// 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+		{
+			ImGui::SliderFloat3("Translation", &translation.x, 0, 1);            // Edit 1 float using a slider from 0.0f to 1.0f
+
+			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		}
+
+		// GUI render
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         // Render the frame
         glfwSwapBuffers(window);
         // get the events
@@ -164,7 +183,26 @@ int run(GLFWwindow* window)
         processInput(window);
     }
 
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
     return 0;
+}
+
+void setUpGUI(GLFWwindow* window)
+{
+	// GL 3.0 + GLSL 130
+	const char* glsl_version = "#version 130";
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
+
+	// Setup Platform/Renderer bindings
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init(glsl_version);
 }
 
 void processInput(GLFWwindow* window)
@@ -226,7 +264,7 @@ int createWindow(GLFWwindow** window)
 
     glfwSetCursorPosCallback(*window, mouse_callback);
     // if not set to disable camera doesnt work well
-    glfwSetInputMode(*window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(*window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     // 0 = disable vsync
     glfwSwapInterval(0);
     return 0;

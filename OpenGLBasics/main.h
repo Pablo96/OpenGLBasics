@@ -132,7 +132,7 @@ public:
     }
 	void setMat4fVec(const char* name, const std::vector<glm::mat4>& matrixvec) const
 	{
-		glUniformMatrix4fv(getLocation(name), matrixvec.size(), GL_FALSE, &matrixvec[0][0][0]);
+		glUniformMatrix4fv(getLocation(name), (GLsizei) matrixvec.size(), GL_FALSE, &matrixvec[0][0][0]);
 	}
 private:
     int getLocation(const char* name) const

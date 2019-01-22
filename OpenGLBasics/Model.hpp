@@ -5,13 +5,15 @@
 #include <GLM/glm.hpp>
 #include <GLM/gtx/quaternion.hpp>
 #include <GLM/gtx/matrix_interpolation.hpp>
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
 #include <vector>
-#include <unordered_map>
+#define TINYGLTF_IMPLEMENTATION
+#define TINYGLTF_NO_EXTERNAL_IMAGE 
+#define TINYGLTF_NO_STB_IMAGE
+#define TINYGLTF_NO_STB_IMAGE_WRITE 
+// #define TINYGLTF_NOEXCEPTION // optional. disable exception handling.
+#include "tiny_gltf.h"
 
-
+static tinygltf::TinyGLTF loader;
 
 //###################################################################
 //				BONE, POSE AND ANIMATION
@@ -239,7 +241,9 @@ public:
     {
         loadModel(path);
 
-		for (uint32 i = 0; i < 50; i++)
+		animatedTransforms.emplace_back(glm::rotate(45.0f, glm::vec3(1.0, 0, 0)));
+
+		for (uint32 i = 1; i < 50; i++)
 		{
 			animatedTransforms.emplace_back(glm::mat4(1.0f));
 		}
@@ -247,12 +251,10 @@ public:
 
 	void draw(Shader& shader, const uint32 count, const float deltaTime)
     {
-		/*
 		// animate skeleton
 		if (animations.size() > 0)
 			animate(deltaTime);
 
-		*/
 		// send animated transforms
 		shader.setMat4fVec("bones", animatedTransforms);
 
@@ -292,183 +294,38 @@ public:
 private:
     void loadModel(const std::string& path)
     {
-        Assimp::Importer import;
-        const aiScene *scene = import.ReadFile(path, 
-			  aiProcess_FlipUVs
-			| aiProcess_Triangulate
-			| aiProcess_LimitBoneWeights
-			| aiProcess_GenSmoothNormals
-			| aiProcess_CalcTangentSpace
-		);
+		tinygltf::Model model;
+		std::string err;
+		std::string warn;
 
-        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
-        {
-            std::cout << "ERROR::ASSIMP::" << import.GetErrorString() << std::endl;
-            return;
-        }
-        directory = path.substr(0, path.find_last_of('/'));
-
-        processNode(scene->mRootNode, scene);
-
-		if (scene->HasAnimations())
-			processAnimations(scene);
+		bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, path, NULL);
 		
-    }
-    
-	void processNode(aiNode *node, const aiScene *scene)
-    {
-        // process all the node's meshes (if any)
-        for (unsigned int i = 0; i < node->mNumMeshes; i++)
-        {
-            aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
-            meshes.push_back(processMesh(mesh, scene));
-        }
-        // then do the same for each of its children
-        for (unsigned int i = 0; i < node->mNumChildren; i++)
-        {
-            processNode(node->mChildren[i], scene);
-        }
-    }
-    
-	Mesh processMesh(aiMesh *mesh, const aiScene *scene)
-    {
-        std::vector<Vertex> vertices;
-        std::vector<unsigned int> indices;
-		
-		// process vertex data
-        for (uint32 i = 0; i < mesh->mNumVertices; i++)
-        {
-            Vertex vertex;
-            // process vertex positions, normals and texture coordinates
-            glm::vec3 vector;
-            vector.x = mesh->mVertices[i].x;
-            vector.y = mesh->mVertices[i].y;
-            vector.z = mesh->mVertices[i].z;
-            vertex.pos = vector;
-
-            vector.x = mesh->mNormals[i].x;
-            vector.y = mesh->mNormals[i].y;
-            vector.z = mesh->mNormals[i].z;
-            vertex.normal = vector;
-			
-			// store tangents and bitangets
-			if (mesh->HasTangentsAndBitangents())
-			{
-
-			}
-
-			// store texture coordinates
-            if (mesh->HasTextureCoords(0))
-            {
-                glm::vec2 vec;
-                vec.x = mesh->mTextureCoords[0][i].x;
-                vec.y = mesh->mTextureCoords[0][i].y;
-                vertex.uvCoord = vec;
-            }
-            else
-                vertex.uvCoord = glm::vec2(0.0f, 0.0f);
-
-            vertices.push_back(vertex);
-        }
-
-		if (mesh->HasBones())
-		{
-			// process bones data
-			for (uint32 i = 0; i < mesh->mNumBones; i++)
-			{
-				aiBone* bone = mesh->mBones[i];
-
-				for (uint32 j = 0; j < MAX_VERTEX_BONES; j++)
-				{
-					uint32 vertexID = mesh->mBones[i]->mWeights[j].mVertexId;
-					float weight = mesh->mBones[i]->mWeights[j].mWeight;
-
-					vertices[vertexID].weights[j] = weight;
-					vertices[vertexID].indices[j] = i;
-				}
-			}
+		if (!warn.empty()) {
+			printf("Warn: %s\n", warn.c_str());
 		}
 
-        // process indices
-        for (uint32 i = 0; i < mesh->mNumFaces; i++)
-        {
-            aiFace face = mesh->mFaces[i];
-            for (unsigned int j = 0; j < face.mNumIndices; j++)
-                indices.push_back(face.mIndices[j]);
-        }
+		if (!err.empty()) {
+			printf("Err: %s\n", err.c_str());
+		}
 
-        return Mesh(vertices, indices);
+		if (!ret) {
+			printf("Failed to parse glTF\n");
+			exit(-1);
+		}
+
+		for (size_t i = 0; i < model.bufferViews.size(); i++) {
+			const tinygltf::BufferView &bufferView = model.bufferViews[i];
+			if (bufferView.target == 0) {
+				std::cout << "WARN: bufferView.target is zero" << std::endl;
+				continue;  // Unsupported bufferView.
+			}
+
+			const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];
+
+			
+		}
     }
 	
-	void processAnimations(const aiScene *scene)
-	{
-		for (uint32 i = 0; i < scene->mNumAnimations; i++)
-		{
-			const aiAnimation* assimpAnim = scene->mAnimations[i];
-			Animation animation;
-
-			animation.duration = (float)assimpAnim->mDuration;
-			animation.ticksPerSec = (float)assimpAnim->mTicksPerSecond;
-
-			// numPoses is the higher num of transforms
-			uint32 numPoses = 0;
-			for (uint32 j = 0; j < assimpAnim->mNumChannels; j++)
-			{
-				const aiNodeAnim* channel = assimpAnim->mChannels[j];
-				uint32 num =  (channel->mNumPositionKeys > channel->mNumRotationKeys)
-						   ?  (channel->mNumPositionKeys > channel->mNumScalingKeys) ? channel->mNumPositionKeys : channel->mNumScalingKeys
-						   :  (channel->mNumRotationKeys > channel->mNumScalingKeys) ? channel->mNumRotationKeys : channel->mNumScalingKeys;
-				numPoses = (num > numPoses) ? num : numPoses;
-			}
-			animation.poses.resize(numPoses);
-
-			// each channel is a bone with all its transformations
-			for (uint32 j = 0; j < assimpAnim->mNumChannels; j++)
-			{
-				const aiNodeAnim* channel = assimpAnim->mChannels[j];
-				
-
-				for (uint32 k = 0; k < numPoses; k++)
-				{
-					glm::mat4 transform;
-					if (channel->mNumScalingKeys >= k)
-					{
-						const auto scaleKey = channel->mScalingKeys[k].mValue;
-						glm::vec3 scale;
-						scale.x = scaleKey.x;
-						scale.y = scaleKey.y;
-						scale.z = scaleKey.z;
-
-						transform = glm::scale(scale);
-					}
-					if (channel->mNumRotationKeys >= k)
-					{
-						const auto rotKey = channel->mRotationKeys[k].mValue;
-						glm::quat quaternion;
-						quaternion.x = rotKey.x;
-						quaternion.y = rotKey.y;
-						quaternion.z = rotKey.z;
-						quaternion.w = rotKey.w;
-
-						transform *= glm::toMat4(quaternion);
-					}
-					if (channel->mNumPositionKeys >= k)
-					{
-						const auto posKey= channel->mPositionKeys[k].mValue;
-						glm::vec3 translation;
-						translation.x = posKey.x;
-						translation.y = posKey.y;
-						translation.z = posKey.z;
-						transform *= glm::translate(translation);
-					}
-
-					//animation.poses[k].transforms.emplace_back(transform);
-				}
-			}
-
-		}
-	}
-
 
 	void animate(const float deltaTime)
 	{
