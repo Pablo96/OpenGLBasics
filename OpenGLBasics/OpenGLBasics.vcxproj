@@ -143,6 +143,7 @@
     <ClCompile Include="imgui_impl_opengl3.cpp" />
     <ClCompile Include="imgui_widgets.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="tinyxml2.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imconfig.h" />
@@ -157,6 +158,7 @@
     <ClInclude Include="main.h" />
     <ClInclude Include="Model.hpp" />
     <ClInclude Include="stb_image.h" />
+    <ClInclude Include="tinyxml2.h" />
     <ClInclude Include="tiny_gltf.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

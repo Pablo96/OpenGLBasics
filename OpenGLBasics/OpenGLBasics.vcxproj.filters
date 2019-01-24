@@ -8,6 +8,12 @@
     <Filter Include="Source Files\imgui">
       <UniqueIdentifier>{c3c7ce97-6bd4-46b7-a2f1-383ba20fa5d0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\tinyxml">
+      <UniqueIdentifier>{06d531f0-38f2-4889-8c70-a1a6342f796f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\tinyglft">
+      <UniqueIdentifier>{9fd81d9c-e25a-448c-a999-e7cf7e8c49d5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -31,18 +37,15 @@
     <ClCompile Include="imgui_impl_opengl3.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="tinyxml2.cpp">
+      <Filter>Source Files\tinyxml</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Model.hpp">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="tiny_gltf.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="json.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="stb_image.h">
@@ -71,6 +74,15 @@
     </ClInclude>
     <ClInclude Include="imgui_impl_opengl3.h">
       <Filter>Source Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="tinyxml2.h">
+      <Filter>Source Files\tinyxml</Filter>
+    </ClInclude>
+    <ClInclude Include="tiny_gltf.h">
+      <Filter>Source Files\tinyglft</Filter>
+    </ClInclude>
+    <ClInclude Include="json.hpp">
+      <Filter>Source Files\tinyglft</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

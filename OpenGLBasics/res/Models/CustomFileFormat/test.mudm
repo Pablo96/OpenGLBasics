@@ -1,0 +1,146 @@
+<model name="Cube">
+	<mesh name="Cube" vertexcount="14">
+		<vertex id="0">
+			<position value="0.19999992847442627 0.19999998807907104 -1.0">
+			</position>
+			<normal value="0.5773491859436035 0.5773491859436035 -0.5773491859436035">
+			</normal>
+			<indices value="0">
+			</indices>
+			<weights value="1.0">
+			</weights>
+		</vertex>
+		<vertex id="1">
+			<position value="0.19999992847442627 -0.20000004768371582 -1.0">
+			</position>
+			<normal value="0.5773491859436035 -0.5773491859436035 -0.5773491859436035">
+			</normal>
+			<indices value="0">
+			</indices>
+			<weights value="1.0">
+			</weights>
+		</vertex>
+		<vertex id="2">
+			<position value="-0.20000004768371582 -0.19999998807907104 -1.0">
+			</position>
+			<normal value="-0.5773491859436035 -0.5773491859436035 -0.5773491859436035">
+			</normal>
+			<indices value="0">
+			</indices>
+			<weights value="1.0">
+			</weights>
+		</vertex>
+		<vertex id="3">
+			<position value="-0.19999992847442627 0.20000004768371582 -1.0">
+			</position>
+			<normal value="-0.5773491859436035 0.5773491859436035 -0.5773491859436035">
+			</normal>
+			<indices value="0">
+			</indices>
+			<weights value="1.0">
+			</weights>
+		</vertex>
+		<vertex id="4">
+			<position value="0.20000004768371582 0.1999998688697815 1.0">
+			</position>
+			<normal value="0.5773491859436035 0.5773491859436035 0.5773491859436035">
+			</normal>
+			<indices value="1">
+			</indices>
+			<weights value="1.0">
+			</weights>
+		</vertex>
+		<vertex id="5">
+			<position value="0.1999998688697815 -0.20000016689300537 1.0">
+			</position>
+			<normal value="0.5773491859436035 -0.5773491859436035 0.5773491859436035">
+			</normal>
+			<indices value="1">
+			</indices>
+			<weights value="1.0">
+			</weights>
+		</vertex>
+		<vertex id="6">
+			<position value="-0.2000001072883606 -0.19999992847442627 1.0">
+			</position>
+			<normal value="-0.5773491859436035 -0.5773491859436035 0.5773491859436035">
+			</normal>
+			<indices value="1">
+			</indices>
+			<weights value="1.0">
+			</weights>
+		</vertex>
+		<vertex id="7">
+			<position value="-0.19999998807907104 0.19999998807907104 1.0">
+			</position>
+			<normal value="-0.5773491859436035 0.5773491859436035 0.5773491859436035">
+			</normal>
+			<indices value="1">
+			</indices>
+			<weights value="1.0">
+			</weights>
+		</vertex>
+		<vertex id="8">
+			<position value="0.19999998807907104 0.19999992847442627 -0.09888838231563568">
+			</position>
+			<normal value="0.7070833444595337 0.7070833444595337 0.0">
+			</normal>
+			<indices value="0">
+			</indices>
+			<weights value="1.0">
+			</weights>
+		</vertex>
+		<vertex id="9">
+			<position value="0.19999998807907104 0.19999992847442627 0.09888838231563568">
+			</position>
+			<normal value="0.7070833444595337 0.7070833444595337 0.0">
+			</normal>
+			<indices value="1">
+			</indices>
+			<weights value="1.0">
+			</weights>
+		</vertex>
+		<vertex id="10">
+			<position value="0.19999989867210388 -0.2000000923871994 0.0">
+			</position>
+			<normal value="0.7070833444595337 -0.7070833444595337 0.0">
+			</normal>
+			<indices value="1 0">
+			</indices>
+			<weights value="0.0 1.0">
+			</weights>
+		</vertex>
+		<vertex id="11">
+			<position value="-0.19999995827674866 0.20000001788139343 0.09888838231563568">
+			</position>
+			<normal value="-0.7070833444595337 0.7070833444595337 0.0">
+			</normal>
+			<indices value="1">
+			</indices>
+			<weights value="1.0">
+			</weights>
+		</vertex>
+		<vertex id="12">
+			<position value="-0.19999995827674866 0.20000001788139343 -0.09888838231563568">
+			</position>
+			<normal value="-0.7070833444595337 0.7070833444595337 0.0">
+			</normal>
+			<indices value="0">
+			</indices>
+			<weights value="1.0">
+			</weights>
+		</vertex>
+		<vertex id="13">
+			<position value="-0.2000000774860382 -0.19999994337558746 0.0">
+			</position>
+			<normal value="-0.7070833444595337 -0.7070833444595337 0.0">
+			</normal>
+			<indices value="1 0">
+			</indices>
+			<weights value="0.0 1.0">
+			</weights>
+		</vertex>
+		<indices count="72" values="0 1 2 0 2 3 4 7 6 4 6 5 8 0 3 8 3 12 10 5 6 10 6 13 2 13 12 2 12 3 13 6 7 13 7 11 0 8 10 0 10 1 1 10 13 1 13 2 10 9 4 10 4 5 8 9 10 11 12 13 8 12 11 8 11 9 4 9 11 4 11 7">
+		</indices>
+	</mesh>
+</model>
