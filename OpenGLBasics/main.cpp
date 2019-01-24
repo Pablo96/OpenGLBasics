@@ -3,6 +3,11 @@
 #include <GLFW/glfw3.h>
 #include <math.h>
 
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_glfw.h"
+#include "ImGui/imgui_impl_opengl3.h"
+
+
 #define BUFFER_SIZE 1024
 #define WIDTH 1280
 #define HEIGHT 720
@@ -23,8 +28,8 @@ void initLog()
 }
 int createWindow(GLFWwindow** window);
 int configOpenGL();
+void setUpGUI(GLFWwindow* window);
 int run(GLFWwindow* window);
-int instanced(GLFWwindow* window);
 void processInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
@@ -42,20 +47,16 @@ int main(int argc, char** argv)
     {
         return 1;
     }
-
+	
     glfwTerminate();
     return 0;
 }
 
 int run(GLFWwindow* window)
 {
-    return instanced(window);
-    //return noInstance(window);
-}
+	setUpGUI(window);
 
-int instanced(GLFWwindow* window)
-{
-    glm::vec3 sunDir(1, 1, 1);
+	glm::vec3 sunDir(1, 1, 1);
 	glm::vec3 sunPos = sunDir * 1.8f;
 
     // SHADERS
@@ -288,11 +289,11 @@ int instanced(GLFWwindow* window)
     std::cout.flush();
     while (!glfwWindowShouldClose(window))
     {
-        // TIME
-        float currentFrame = (float)glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-        std::cout << deltaTime * 1000 << "ms" << std::endl;
+		// Start the Dear ImGui frame
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
         // Logic
 		angle += .5f;
 		angle = (angle > 360.0f) ? 0.0f : angle;
@@ -374,6 +375,17 @@ int instanced(GLFWwindow* window)
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 		
 
+		// GUI Update
+		{
+			static float f = 0.0f;
+			ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		}
+
+		// GUI Rendering
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         // Render the frame
         glfwSwapBuffers(window);
         // get the events
@@ -381,6 +393,10 @@ int instanced(GLFWwindow* window)
         processInput(window);
     }
 
+	// Cleanup
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
     return 0;
 }
 
@@ -470,6 +486,23 @@ int configOpenGL()
     // in this case fback faces are the ones not rendered
     glCullFace(GL_BACK);
     return 0;
+}
+
+void setUpGUI(GLFWwindow* window)
+{
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
+
+	// Setup Platform/Renderer bindings
+	// GL 3.0 + GLSL 130
+	const char* glsl_version = "#version 440";
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init(glsl_version);
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
