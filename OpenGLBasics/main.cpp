@@ -2,9 +2,9 @@
 #include "Model.hpp"
 #include <GLFW/glfw3.h>
 
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
+#include "ImGui\imgui.h"
+#include "ImGui\imgui_impl_glfw.h"
+#include "ImGui\imgui_impl_opengl3.h"
 #include <math.h>
 
 #define BUFFER_SIZE 1024
@@ -66,7 +66,6 @@ int run(GLFWwindow* window)
 	shader.setVec4f("sun.position", sunPos.x, sunPos.y, sunPos.z, 1.0f),
     shader.setVec4f("sun.ambient", 0.2f, 0.2f, 0.2f);
     shader.setVec4f("sun.diffuse", 1.0f, 0.9f, 0.8f);
-    shader.setVec4f("sun.specular");
 	shader.setFloat("sun.energy", 10.5f);
 	
 	
@@ -74,21 +73,15 @@ int run(GLFWwindow* window)
     Material tireMat = { glm::vec4(0, 0, 1, 1), nullptr, nullptr, nullptr, 27.0f};
 	Material rimMat = { glm::vec4(0, 1, 0, 1), nullptr, nullptr, nullptr, 256.0f};
 	Material floorMaterial = { glm::vec4(0.5f, 0.5f, 0.5f, 1), nullptr, nullptr, nullptr, 5.0f };
-	Material sunMaterial = { glm::vec4(1, 0.5f, 0, 1), nullptr, nullptr, nullptr, 1.0f };
-	Material animatedMeshMaterial = { glm::vec4(0.8f, 0.8f, 0.8f, 1), nullptr, nullptr, nullptr, 1.0f };
 
 	// Model Materials
     std::vector<Material> materials = { tireMat, rimMat };
 	std::vector<Material> floorMaterials = { floorMaterial };
-	std::vector<Material> sunMaterials = { sunMaterial };
-	std::vector<Material> animatedMeshMaterials = { animatedMeshMaterial };
 
 	
 	// MODELS
-    //Model model("res\\Models\\wheel.obj", &materials, "Wheel");
-	//Model floor("res\\Models\\plane.obj", &floorMaterials);
-	//Model sunModel("res\\Models\\sphere_lp.obj", &sunMaterials);
-	Model animatedMesh("res\\Models\\AnimatedCubeArm\\AnimatedCubeArm.gltf", &animatedMeshMaterials);
+    Model model("res\\Models\\wheel.mudm", &materials, "Wheel");
+	Model floor("res\\Models\\plane.mudm", &floorMaterials);
 
 
 	//#################################################
@@ -103,10 +96,6 @@ int run(GLFWwindow* window)
     
 	glm::mat4 modelMat = glm::rotate(glm::radians(0.0f), glm::vec3(0, 1, 0));
 	
-	glm::mat4 sunMat = glm::translate(sunPos * 5.0f) * glm::scale(glm::vec3(0.2f));
-	
-	glm::mat4 animMeshMat = glm::translate(glm::vec3(-1, 0.0, 0.0));
-
 	glm::mat4 transform;
 	float angle = 0.0f;
 
@@ -116,39 +105,30 @@ int run(GLFWwindow* window)
     std::cout.flush();
     while (!glfwWindowShouldClose(window))
     {
-        // TIME
-        float currentFrame = (float)glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-        // Logic
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		
+		deltaTime = ImGui::GetIO().DeltaTime;
+        
+		
+		// Logic
 		angle += .5f;
 		angle = (angle > 360.0f) ? 0.0f : angle;
         PVmat = perspective * cam.GetViewMatrix();
         camPos = cam.Position;
-		animMeshMat = glm::translate(translation);
+		modelMat = glm::translate(translation);
 		
 
         // RENDER CALLS OR CODE
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
 
-		/*
-		unlitShader.bind();
-		transform = PVmat * sunMat;
-		sunModel.setTransforms(1, &transform, 0);
-		sunModel.draw(unlitShader, 1, deltaTime);
-			
 
 		shader.bind();
 		shader.setVec4f("viewPos", camPos.x, camPos.y, camPos.z);
 
 		// set the shadow map
-		glActiveTexture(GL_TEXTURE0 + 2);
-		glBindTexture(GL_TEXTURE_2D, depthMap);
-
 		transform = PVmat * modelMat;
 		model.setTransforms(1, &transform, 0);
 		model.setTransforms(1, &modelMat, 1);
@@ -158,11 +138,6 @@ int run(GLFWwindow* window)
 		floor.setTransforms(1, &transform, 0);
 		floor.setTransforms(1, &floorMat, 1);
 		floor.draw(shader, 1, deltaTime);
-		*/
-		transform = PVmat * animMeshMat;
-		animatedMesh.setTransforms(1, &transform, 0);
-		animatedMesh.setTransforms(1, &animMeshMat, 1);
-		animatedMesh.draw(shader, 1, deltaTime);
 
 
 		// GUI DATA

@@ -6,14 +6,7 @@
 #include <GLM/gtx/quaternion.hpp>
 #include <GLM/gtx/matrix_interpolation.hpp>
 #include <vector>
-#define TINYGLTF_IMPLEMENTATION
-#define TINYGLTF_NO_EXTERNAL_IMAGE 
-#define TINYGLTF_NO_STB_IMAGE
-#define TINYGLTF_NO_STB_IMAGE_WRITE 
-// #define TINYGLTF_NOEXCEPTION // optional. disable exception handling.
-#include "tiny_gltf.h"
-
-static tinygltf::TinyGLTF loader;
+#include "MUDImporter/mud_importer.hpp"
 
 //###################################################################
 //				BONE, POSE AND ANIMATION
@@ -252,11 +245,11 @@ public:
 	void draw(Shader& shader, const uint32 count, const float deltaTime)
     {
 		// animate skeleton
-		if (animations.size() > 0)
-			animate(deltaTime);
+		//if (animations.size() > 0)
+		//	animate(deltaTime);
 
 		// send animated transforms
-		shader.setMat4fVec("bones", animatedTransforms);
+		//shader.setMat4fVec("bones", animatedTransforms);
 
 		// set materials
         if (materials && materials->size() > 0)
@@ -294,35 +287,40 @@ public:
 private:
     void loadModel(const std::string& path)
     {
-		tinygltf::Model model;
-		std::string err;
-		std::string warn;
+		auto model = MUDLoader::LoadBinary(path.c_str());
 
-		bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, path, NULL);
-		
-		if (!warn.empty()) {
-			printf("Warn: %s\n", warn.c_str());
-		}
+		for (auto mesh : model.meshes)
+		{
+			std::vector<Vertex> vertices;
+			for (auto vertex : mesh.vertices)
+			{
+				Vertex vert;
 
-		if (!err.empty()) {
-			printf("Err: %s\n", err.c_str());
-		}
+				vert.pos.x = vertex.pos.x;
+				vert.pos.y = vertex.pos.y;
+				vert.pos.z = vertex.pos.z;
 
-		if (!ret) {
-			printf("Failed to parse glTF\n");
-			exit(-1);
-		}
+				vert.normal.x = vertex.normal.x;
+				vert.normal.y = vertex.normal.y;
+				vert.normal.z = vertex.normal.z;
 
-		for (size_t i = 0; i < model.bufferViews.size(); i++) {
-			const tinygltf::BufferView &bufferView = model.bufferViews[i];
-			if (bufferView.target == 0) {
-				std::cout << "WARN: bufferView.target is zero" << std::endl;
-				continue;  // Unsupported bufferView.
+				vert.uvCoord.x = vertex.uvCoord.x;
+				vert.uvCoord.y = vertex.uvCoord.y;
+
+				vert.indices.x = vertex.indices.x;
+				vert.indices.y = vertex.indices.y;
+				vert.indices.z = vertex.indices.z;
+				vert.indices.w = vertex.indices.w;
+
+				vert.weights.x = vertex.weights.x;
+				vert.weights.y = vertex.weights.y;
+				vert.weights.z = vertex.weights.z;
+				vert.weights.w = vertex.weights.w;
+
+				vertices.emplace_back(vert);
 			}
 
-			const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];
-
-			
+			meshes.emplace_back(Mesh(vertices, mesh.indices));
 		}
     }
 	

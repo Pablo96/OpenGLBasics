@@ -8,37 +8,37 @@
     <Filter Include="Source Files\imgui">
       <UniqueIdentifier>{c3c7ce97-6bd4-46b7-a2f1-383ba20fa5d0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\tinyxml">
+    <Filter Include="Source Files\mudimporter">
       <UniqueIdentifier>{06d531f0-38f2-4889-8c70-a1a6342f796f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\tinyglft">
-      <UniqueIdentifier>{9fd81d9c-e25a-448c-a999-e7cf7e8c49d5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="imgui.cpp">
+    <ClCompile Include="ImGui\imgui.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="imgui_demo.cpp">
+    <ClCompile Include="ImGui\imgui_demo.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="imgui_draw.cpp">
+    <ClCompile Include="ImGui\imgui_draw.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="imgui_widgets.cpp">
+    <ClCompile Include="ImGui\imgui_impl_glfw.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="imgui_impl_glfw.cpp">
+    <ClCompile Include="ImGui\imgui_impl_opengl3.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="imgui_impl_opengl3.cpp">
+    <ClCompile Include="ImGui\imgui_widgets.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="tinyxml2.cpp">
-      <Filter>Source Files\tinyxml</Filter>
+    <ClCompile Include="MUDImporter\mud_importer.cpp">
+      <Filter>Source Files\mudimporter</Filter>
+    </ClCompile>
+    <ClCompile Include="MUDImporter\tinyxml2.cpp">
+      <Filter>Source Files\mudimporter</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -51,38 +51,40 @@
     <ClInclude Include="stb_image.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="imconfig.h">
+    <ClInclude Include="ImGui\imconfig.h">
       <Filter>Source Files\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="imgui.h">
+    <ClInclude Include="ImGui\imgui.h">
       <Filter>Source Files\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="imgui_internal.h">
+    <ClInclude Include="ImGui\imgui_impl_glfw.h">
       <Filter>Source Files\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="imstb_rectpack.h">
+    <ClInclude Include="ImGui\imgui_impl_opengl3.h">
       <Filter>Source Files\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="imstb_textedit.h">
+    <ClInclude Include="ImGui\imgui_internal.h">
       <Filter>Source Files\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="imstb_truetype.h">
+    <ClInclude Include="ImGui\imstb_rectpack.h">
       <Filter>Source Files\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="imgui_impl_glfw.h">
+    <ClInclude Include="ImGui\imstb_textedit.h">
       <Filter>Source Files\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="imgui_impl_opengl3.h">
+    <ClInclude Include="ImGui\imstb_truetype.h">
       <Filter>Source Files\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="tinyxml2.h">
-      <Filter>Source Files\tinyxml</Filter>
+    <ClInclude Include="MUDImporter\mud_importer.hpp">
+      <Filter>Source Files\mudimporter</Filter>
     </ClInclude>
-    <ClInclude Include="tiny_gltf.h">
-      <Filter>Source Files\tinyglft</Filter>
+    <ClInclude Include="MUDImporter\tinyxml2.h">
+      <Filter>Source Files\mudimporter</Filter>
     </ClInclude>
-    <ClInclude Include="json.hpp">
-      <Filter>Source Files\tinyglft</Filter>
-    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ImGui\imgui.ini">
+      <Filter>Source Files\imgui</Filter>
+    </None>
   </ItemGroup>
 </Project>
