@@ -239,7 +239,7 @@ int createWindow(GLFWwindow** window)
 
     glfwSetCursorPosCallback(*window, mouse_callback);
     // if not set to disable camera doesnt work well
-    glfwSetInputMode(*window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(*window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     // 0 = disable vsync
     glfwSwapInterval(0);
     return 0;

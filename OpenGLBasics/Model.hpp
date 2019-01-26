@@ -287,7 +287,7 @@ public:
 private:
     void loadModel(const std::string& path)
     {
-		auto model = MUDLoader::LoadBinary(path.c_str());
+		auto model = MUDLoader::LoadASCII(path.c_str());
 
 		for (auto mesh : model.meshes)
 		{
