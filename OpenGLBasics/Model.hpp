@@ -15,9 +15,10 @@
 
 struct Bone
 {
-	uint32 id;
+	int id;
+	const char* debugName;
 	glm::mat4 offsetMatrix;
-	std::vector<Bone> children;
+	std::vector<Bone*> children;
 };
 
 // TODO: add scaling
@@ -219,6 +220,7 @@ class Model
 	
 	// Skeleton AKA bone hierarchy of the mesh
 	Bone* skeleton;
+	std::vector<Bone*> boneArray;
 
 	// Animations
 	std::vector<Animation> animations;
@@ -244,13 +246,6 @@ public:
 
 	void draw(Shader& shader, const uint32 count, const float deltaTime)
     {
-		// animate skeleton
-		//if (animations.size() > 0)
-		//	animate(deltaTime);
-
-		// send animated transforms
-		//shader.setMat4fVec("bones", animatedTransforms);
-
 		// set materials
         if (materials && materials->size() > 0)
             for (uint32 i = 0; i < meshes.size(); i++)
@@ -287,9 +282,14 @@ public:
 private:
     void loadModel(const std::string& path)
     {
-		auto model = MUDLoader::LoadASCII(path.c_str());
+		MUDLoader::Model* model = nullptr;
+		MUDLoader::LoadASCII(path.c_str(), &model);
+		
+		if (!model) 
+			return;
 
-		for (auto mesh : model.meshes)
+		// Meshes of the model
+		for (auto mesh : model->meshes)
 		{
 			std::vector<Vertex> vertices;
 			for (auto vertex : mesh.vertices)
@@ -322,51 +322,16 @@ private:
 
 			meshes.emplace_back(Mesh(vertices, mesh.indices));
 		}
+
+		// Skeleton of the model
+		skeleton = (Bone*) model->skeleton;
+		for (auto bone : model->boneArray)
+		{
+			boneArray.emplace_back((Bone*)bone);
+		}
+		
+		delete model;
     }
-	
-
-	void animate(const float deltaTime)
-	{
-		Animation animation = animations[0];
-			
-		float durationSec = animation.duration / animation.ticksPerSec;
-		animation.currentTime += deltaTime;
-
-		if (animation.currentTime > durationSec)
-			animation.currentTime = animation.currentTime - durationSec;
-
-		Pose pose1, pose2;
-		searchPoses(animation, pose1, pose2, deltaTime);
-
-		// interpolation factor between 0.0f  and 1.0f
-		float factor = (pose2.timeStamp - pose1.timeStamp) / deltaTime;
-
-		glm::mat4 transform;
-
-		transform = interpolatePoseTransform(pose1.transforms[skeleton->id], pose2.transforms[skeleton->id], factor);
-			
-		animatedTransforms.emplace_back(transform);
-
-		for (uint32 j = 0; j < skeleton->children.size(); j++)
-		{
-			applyAnimation(&skeleton->children[j], transform, pose1, pose2, factor);
-		}
-	}
-
-	void applyAnimation(Bone* bone, const glm::mat4& parentTransform,
-						const Pose& pose1, const Pose& pose2, const float factor)
-	{
-		glm::mat4 transform;
-
-		transform = interpolatePoseTransform(pose1.transforms[bone->id], pose2.transforms[bone->id], factor);
-
-		animatedTransforms.emplace_back(transform);
-
-		for (uint32 j = 0; j < skeleton->children.size(); j++)
-		{
-			applyAnimation(&skeleton->children[j], parentTransform * transform, pose1, pose2, factor);
-		}
-	}
 };
 
 

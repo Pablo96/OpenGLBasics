@@ -39,31 +39,10 @@ namespace MUDLoader
 
 	struct Bone
 	{
-		unsigned int id;
+		int id;
+		const char* debugName;
 		mat4 offsetMatrix;
-		std::vector<Bone> children;
-	};
-
-	// TODO: add scaling
-	// Note: this are relative to parent bone.
-	struct BoneTransform
-	{
-		vec3d position;
-		quatd rotation;
-	};
-
-	struct Pose
-	{
-		float timeStamp; // time is played (in seconds)
-		std::vector<BoneTransform> transforms;
-	};
-
-	struct Animation
-	{
-		float duration = 0; // duration in ticks
-		float ticksPerSec = 0;
-		float currentTime = 0; // current time in seconds
-		std::vector<Pose> poses;
+		std::vector<Bone*> children;
 	};
 
 	//###################################################################
@@ -88,9 +67,11 @@ namespace MUDLoader
 	struct Model
 	{
 		std::vector<Mesh> meshes;
+		Bone* skeleton = nullptr;
+		std::vector<mat4*> boneArray;
 	};
 
-	Model LoadASCII(const char* filePath);
+	void LoadASCII(const char* filePath, Model** model);
 
-	Model LoadBinary(const char* filePath);
+	void LoadBinary(const char* filePath, Model** model);
 }

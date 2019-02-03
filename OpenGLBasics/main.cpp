@@ -73,15 +73,18 @@ int run(GLFWwindow* window)
     Material tireMat = { glm::vec4(0, 0, 1, 1), nullptr, nullptr, nullptr, 27.0f};
 	Material rimMat = { glm::vec4(0, 1, 0, 1), nullptr, nullptr, nullptr, 256.0f};
 	Material floorMaterial = { glm::vec4(0.5f, 0.5f, 0.5f, 1), nullptr, nullptr, nullptr, 5.0f };
+	Material charMaterial = { glm::vec4(1.0f, 0.0f, 0.0f, 1), nullptr, nullptr, nullptr, 5.0f };
 
 	// Model Materials
     std::vector<Material> materials = { tireMat, rimMat };
 	std::vector<Material> floorMaterials = { floorMaterial };
+	std::vector<Material> charMaterials = { charMaterial };
 
 	
 	// MODELS
     Model model("res\\Models\\wheel.mudm", &materials, "Wheel");
 	Model floor("res\\Models\\plane.mudm", &floorMaterials);
+	Model character("res\\Models\\Character_Running.mudm", &charMaterials);
 
 
 	//#################################################
@@ -96,6 +99,9 @@ int run(GLFWwindow* window)
     
 	glm::mat4 modelMat = glm::rotate(glm::radians(0.0f), glm::vec3(0, 1, 0));
 	
+	glm::mat4 charMat = glm::translate(glm::vec3(0, -0.8, 0))
+		* glm::rotate(glm::radians(-90.0f), glm::vec3(1, 0, 0)) * glm::scale(glm::vec3(.2f, .2f, .2f));
+
 	glm::mat4 transform;
 	float angle = 0.0f;
 
@@ -139,6 +145,10 @@ int run(GLFWwindow* window)
 		floor.setTransforms(1, &floorMat, 1);
 		floor.draw(shader, 1, deltaTime);
 
+		transform = PVmat * charMat;
+		character.setTransforms(1, &transform, 0);
+		character.setTransforms(1, &charMat, 1);
+		character.draw(shader, 1, deltaTime);
 
 		// GUI DATA
 		// 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
