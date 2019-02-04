@@ -86,8 +86,6 @@ public:
         glGenBuffers(1, &EBO);
         glGenBuffers(1, &TBO);
         glGenBuffers(1, &MBO);
-		glGenBuffers(1, &IBO);
-		glGenBuffers(1, &WBO);
 
         // Bind the Array Object
         glBindVertexArray(VAO);
@@ -115,12 +113,17 @@ public:
         glEnableVertexAttribArray(1);
         // vertex texture coords
         glEnableVertexAttribArray(2);
-		// vertex tangent coords
+		// vertex bone weights
 		glEnableVertexAttribArray(3);
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+		// vertex bone index
+		glEnableVertexAttribArray(4);
+        
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uvCoord));
+		glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, weights));
+		// Here we use 'glVertexAttribIPointer' so it stores Integer and do not convert it to float
+		glVertexAttribIPointer(4, 4, GL_UNSIGNED_INT, sizeof(Vertex), (void*)offsetof(Vertex, indices));
 
         // Transform attribute
         /*
@@ -132,7 +135,7 @@ public:
 		//			TRANSFORM MATRIX
 		//##################################################
         // Enable the vertex attributes
-        int attribLocation = 4;
+        int attribLocation = 5;
         glEnableVertexAttribArray(attribLocation + 0);
         glEnableVertexAttribArray(attribLocation + 1);
         glEnableVertexAttribArray(attribLocation + 2);
@@ -167,18 +170,6 @@ public:
         glVertexAttribDivisor(attribLocation + 2, 1);
         glVertexAttribDivisor(attribLocation + 3, 1);
 
-		//##################################################
-		//			SKINNING INFO
-		//##################################################
-		attribLocation += 4;
-		glEnableVertexAttribArray(attribLocation);
-		glBindBuffer(GL_ARRAY_BUFFER, IBO);
-		// Here we use 'glVertexAttribIPointer' so it stores Integer and do not convert it to float
-		glVertexAttribIPointer(attribLocation, 4, GL_UNSIGNED_INT, 4 * sizeof(uint32) * 4, (void*)0);
-		attribLocation += 1;
-		glEnableVertexAttribArray(attribLocation);
-		glBindBuffer(GL_ARRAY_BUFFER, WBO);
-		glVertexAttribPointer(attribLocation, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float) * 4, (void*)0);
     }
 
     void draw(const uint32 count) const
@@ -236,11 +227,6 @@ public:
     Model(const std::string& path, std::vector<Material>* inMaterials = nullptr, const std::string& inName="mesh")
         : materials(inMaterials), name(inName)
     {
-		for (size_t i = 0; i < 50; i++)
-		{
-			restPosition.emplace_back(glm::mat4(1.0));
-		}
-
 		loadModel(path);
 	}
 
@@ -249,17 +235,16 @@ public:
 		
 		if (!init)
 		{
-			shader.setMat4fVec("bones", restPosition);
-			init != init;
+			shader.setMat4f("bones", glm::mat4(1.0f));
+			init = !init;
 		}
 
-		// Load rest position to gpu
-		static int angle = 0;
+		// Load animated position to gpu
 		if (skeleton)
 		{
-			restPosition[4] = glm::rotate(glm::radians((float)++angle), glm::vec3(1, 0, 0));
 			shader.setMat4fVec("bones", restPosition);
 		}
+
 		// set materials
         if (materials && materials->size() > 0)
             for (uint32 i = 0; i < meshes.size(); i++)
@@ -348,8 +333,7 @@ private:
 			{
 				glm::mat4 matrix;
 				memcpy(&matrix[0][0], transform, sizeof(float) * 16);
-				//restPosition[i++] = (matrix);
-				restPosition.emplace_back(matrix);
+				restPosition.emplace_back(glm::mat4(1.0f));
 			}
 		}
 		

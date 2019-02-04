@@ -120,7 +120,8 @@ public:
     }
     void setVec4f(const char* name, const float x = 1.0f, const float y = 1.0f, const float z = 1.0f, const float w = 1.0f) const
     {
-        glUniform4f(getLocation(name), x, y, z, w);
+		auto loc = getLocation(name);
+        glUniform4f(loc, x, y, z, w);
     }
     void setMat3f(const char* name, const glm::mat3& matrix) const
     {
@@ -132,7 +133,8 @@ public:
     }
 	void setMat4fVec(const char* name, const std::vector<glm::mat4>& matrixvec) const
 	{
-		glUniformMatrix4fv(getLocation(name), (GLsizei) matrixvec.size(), GL_FALSE, &matrixvec[0][0][0]);
+		auto loc = getLocation(name);
+		glUniformMatrix4fv(loc, (GLsizei) matrixvec.size(), GL_FALSE, &matrixvec[0][0][0]);
 	}
 private:
     int getLocation(const char* name) const
