@@ -5,6 +5,7 @@
 #include <GLM/glm.hpp>
 #include <GLM/gtx/quaternion.hpp>
 #include <GLM/gtx/matrix_interpolation.hpp>
+#include <GLM/gtc/type_ptr.hpp>
 #include <vector>
 #include "MUDImporter/mud_importer.hpp"
 
@@ -220,7 +221,7 @@ class Model
 	
 	// Skeleton AKA bone hierarchy of the mesh
 	Bone* skeleton;
-	std::vector<Bone*> boneArray;
+	std::vector<glm::mat4> boneArray;
 
 	// Animations
 	std::vector<Animation> animations;
@@ -325,10 +326,14 @@ private:
 
 		// Skeleton of the model
 		skeleton = (Bone*) model->skeleton;
-		for (auto bone : model->boneArray)
-		{
-			boneArray.emplace_back((Bone*)bone);
-		}
+		
+		if  (skeleton)
+			for (auto transform : model->bonesTransformsArray)
+			{
+				glm::mat4 matrix;
+				memcpy(&matrix[0][0], transform, sizeof(float) * 16);
+				boneArray.emplace_back(matrix);
+			}
 		
 		delete model;
     }

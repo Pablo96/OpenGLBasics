@@ -7,10 +7,10 @@ namespace MUDLoader
 
 	struct mat4
 	{
-		double xx, xy, xz, xw;
-		double yx, yy, yz, yw;
-		double zx, zy, zz, zw;
-		double wx, wy, wz, ww;
+		float xx, yx, zx, wx;
+		float xy, yy, zy, wy;
+		float xz, yz, zz, wz;
+		float xw, yw, zw, ww;
 	};
 
 	template<typename T>
@@ -31,9 +31,9 @@ namespace MUDLoader
 		T x, y, z, w;
 	};
 
-	typedef vec2<double> vec2d;
-	typedef vec3<double> vec3d;
-	typedef vec4<double> vec4d;
+	typedef vec2<float> vec2d;
+	typedef vec3<float> vec3d;
+	typedef vec4<float> vec4d;
 	typedef vec4<unsigned int> vec4u;
 	typedef vec4d quatd;
 
@@ -68,7 +68,7 @@ namespace MUDLoader
 	{
 		std::vector<Mesh> meshes;
 		Bone* skeleton = nullptr;
-		std::vector<mat4*> boneArray;
+		std::vector<mat4*> bonesTransformsArray;
 	};
 
 	void LoadASCII(const char* filePath, Model** model);
