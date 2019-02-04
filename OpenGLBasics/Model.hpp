@@ -8,44 +8,8 @@
 #include <GLM/gtc/type_ptr.hpp>
 #include <vector>
 #include "MUDImporter/mud_importer.hpp"
+#include "Animator.h"
 
-//###################################################################
-//				BONE, POSE AND ANIMATION
-//###################################################################
-#define MAX_VERTEX_BONES 4	// Max number of bones per vertex
-
-struct Bone
-{
-	int id;
-	const char* debugName;
-	glm::mat4 offsetMatrix;
-	std::vector<Bone*> children;
-};
-
-// TODO: add scaling
-// Note: this are relative to parent bone.
-struct BoneTransform
-{
-	glm::vec3 position;
-	glm::quat rotation;
-};
-
-struct Pose
-{
-	float timeStamp; // time is played (in seconds)
-	std::vector<BoneTransform> transforms;
-};
-
-struct Animation
-{
-	float duration = 0; // duration in ticks
-	float ticksPerSec = 0;
-	float currentTime = 0; // current time in seconds
-	std::vector<Pose> poses;
-};
-
-void searchPoses(const Animation& anim, Pose& pose1, Pose& pose2, const float currentTime);
-glm::mat4 interpolatePoseTransform(const BoneTransform& trans1, const BoneTransform& trans2, const float factor);
 
 //###################################################################
 //				VERTEX, MESH AND MODEL
@@ -208,13 +172,13 @@ class Model
 {
 	bool init = false;
 
-
-    std::vector<Mesh> meshes;
     std::string directory;
+    std::vector<Mesh> meshes;
     std::vector<Material>* materials;
 	
 	// Skeleton AKA bone hierarchy of the mesh
 	Bone* skeleton;
+
 	// matrices of rest position in order
 	std::vector<glm::mat4> restPosition;
 
@@ -341,29 +305,4 @@ private:
     }
 };
 
-
-void searchPoses(const Animation& anim, Pose& pose1, Pose& pose2, const float currentTime)
-{
-	pose1 = anim.poses[0];
-	for (size_t i = 1; i < anim.poses.size(); i++)
-	{
-		if (anim.poses[i].timeStamp > currentTime)
-		{
-			pose2 = anim.poses[i];
-			pose1 = anim.poses[i - 1];
-			return;
-		}
-	}
-}
-
-glm::mat4 interpolatePoseTransform(const BoneTransform& trans1, const BoneTransform& trans2, const float factor)
-{
-	glm::quat slerpQuat = glm::slerp(trans1.rotation, trans2.rotation, factor);
-	glm::mat4 rotMat = glm::toMat4(slerpQuat);
-
-	glm::vec3 lerpVec = glm::mix(trans1.position, trans2.position, factor);
-	glm::mat4 posMat = glm::translate(lerpVec);
-
-	return posMat * rotMat;
-}
 

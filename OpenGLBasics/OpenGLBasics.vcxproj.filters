@@ -81,6 +81,9 @@
     <ClInclude Include="stb_image.h">
       <Filter>Archivos de origen</Filter>
     </ClInclude>
+    <ClInclude Include="Animator.h">
+      <Filter>Archivos de origen</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ImGui\imgui.ini">

@@ -2,7 +2,7 @@
 #include "mud_importer.hpp"
 #include <sstream>
 #include <iostream>
-#include <algorithm> // std::sort
+#include <iterator>   // istream_iterator
 
 void quaternionToMatrix(MUDLoader::quatd& q, MUDLoader::mat4& mat)
 {
@@ -24,11 +24,99 @@ void quaternionToMatrix(MUDLoader::quatd& q, MUDLoader::mat4& mat)
 	mat.ww = 1;
 }
 
-void translationToMatrix(MUDLoader::vec3d& vec, MUDLoader::mat4& mat)
+void translationToMatrix(MUDLoader::vec3& vec, MUDLoader::mat4& mat)
 {
 	mat.xw = vec.x;
 	mat.yw = vec.y;
 	mat.zw = vec.z;
+}
+
+
+void helperStrToVec3(const char* charArray, MUDLoader::vec3& vec)
+{
+	std::string string(charArray);
+	
+	size_t first = string.find_first_of(", ");
+
+	auto sub = string.substr(0, PRECISION);
+
+	// X
+	{
+		size_t first = sub.find_first_of(", ");
+		if (first != std::string::npos)
+			sub = sub.replace(first, std::string::npos, "");
+		vec.x = (MUDLoader::decimal) atof(sub.c_str());
+	}
+
+	// Y
+	{
+		first = string.find(", ", first) + 2;
+		sub = string.substr(first, PRECISION);
+
+		size_t first = sub.find_first_of(", ");
+		if (first != std::string::npos)
+			sub = sub.replace(first, std::string::npos, "");
+
+		vec.y = (MUDLoader::decimal) atof(sub.c_str());
+	}
+
+	// Z
+	{
+		first = string.find(", ", first) + 2;
+		sub = string.substr(first, PRECISION);
+
+		vec.z = (MUDLoader::decimal) atof(sub.c_str());
+	}
+}
+
+void helperStrToVec4(const char* charArray, MUDLoader::vec4& vec)
+{
+	std::string string(charArray);
+
+	size_t first = string.find_first_of(", ");
+
+	auto sub = string.substr(0, PRECISION);
+
+	// X
+	{
+		size_t first = sub.find_first_of(", ");
+		if (first != std::string::npos)
+			sub = sub.replace(first, std::string::npos, "");
+		vec.x = (MUDLoader::decimal) atof(sub.c_str());
+	}
+
+	// Y
+	{
+		first = string.find(", ", first) + 2;
+		sub = string.substr(first, PRECISION);
+		
+		size_t first = sub.find_first_of(", ");
+		if (first != std::string::npos)
+			sub = sub.replace(first, std::string::npos, "");
+		
+		vec.y = (MUDLoader::decimal) atof(sub.c_str());
+	}
+
+	// Z
+	{
+		first = string.find(", ", first) + 2;
+		sub = string.substr(first, PRECISION);
+		
+		
+		size_t first = sub.find_first_of(", ");
+		if (first != std::string::npos)
+			sub = sub.replace(first, std::string::npos, "");
+
+		vec.z = (MUDLoader::decimal) atof(sub.c_str());
+	}
+
+	// W
+	{
+		first = string.find(", ", first) + 2;
+		sub = string.substr(first, PRECISION);
+
+		vec.w = (MUDLoader::decimal) atof(sub.c_str());
+	}
 }
 
 
@@ -41,27 +129,15 @@ void helperBoneBuild(MUDLoader::Bone& bone, tinyxml2::XMLElement* boneNode)
 	bone.debugName = name;
 	bone.id = atoi(id);
 
-	MUDLoader::vec3d translationVec;
-	{
-		std::stringstream string(translation);
-		string >> translationVec.x;
-		string >> translationVec.y;
-		string >> translationVec.z;
-	}
+	MUDLoader::vec3 translationVec = MUDLoader::vec3();
+	helperStrToVec3(translation, translationVec);
 
-	MUDLoader::quatd rotationQuat;
-	{
-		std::stringstream string(rotation);
-		string >> rotationQuat.x;
-		string >> rotationQuat.y;
-		string >> rotationQuat.z;
-		string >> rotationQuat.w;
-	}
+	MUDLoader::quatd rotationQuat = MUDLoader::quatd();
+	helperStrToVec4(rotation, rotationQuat);
 
 	quaternionToMatrix(rotationQuat, bone.offsetMatrix);
 	translationToMatrix(translationVec, bone.offsetMatrix);
 }
-
 
 void skeletonBuild(tinyxml2::XMLElement* node, MUDLoader::Bone* parent, std::vector<MUDLoader::mat4*>& array)
 {
@@ -69,8 +145,11 @@ void skeletonBuild(tinyxml2::XMLElement* node, MUDLoader::Bone* parent, std::vec
 	{
 		MUDLoader::Bone* boneTmp = new MUDLoader::Bone();
 		helperBoneBuild(*boneTmp, siblingNode);
-		parent->children.emplace_back(boneTmp);
 		
+		// double linking
+		parent->children.emplace_back(boneTmp);
+		boneTmp->parent = parent;
+
 		// Matrix array
 		array.emplace_back(&boneTmp->offsetMatrix);
 
@@ -181,10 +260,11 @@ void MUDLoader::LoadASCII(const char * filePath, Model** model)
 
 	if (skeletonNode)
 	{
-		// first get the root bone (skeleton must have a unique root bone!)
+		// build the root bone (skeleton must have a unique root bone!)
 		skeleton = new Bone();
 		auto rootNode = skeletonNode->FirstChildElement("bone");
 		helperBoneBuild(*skeleton, rootNode);
+		
 		// build skeleton and transform array (should be sorted)
 		skeletonBuild(rootNode->FirstChildElement("bone"), skeleton, boneArray);
 	}
