@@ -2,7 +2,6 @@
 in vec2 uvCoord;
 in vec3 vNormal;
 in vec4 vPos;
-
 // OUT VARIABLES
 out vec4 color;
 

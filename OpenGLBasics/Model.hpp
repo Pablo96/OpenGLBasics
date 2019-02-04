@@ -215,19 +215,20 @@ public:
 
 class Model
 {
+	bool init = false;
+
+
     std::vector<Mesh> meshes;
     std::string directory;
     std::vector<Material>* materials;
 	
 	// Skeleton AKA bone hierarchy of the mesh
 	Bone* skeleton;
-	std::vector<glm::mat4> boneArray;
+	// matrices of rest position in order
+	std::vector<glm::mat4> restPosition;
 
 	// Animations
 	std::vector<Animation> animations;
-
-	// Animated transforms
-	std::vector<glm::mat4> animatedTransforms;
 
 	// DEBUG NAME
 	const std::string name;
@@ -235,18 +236,30 @@ public:
     Model(const std::string& path, std::vector<Material>* inMaterials = nullptr, const std::string& inName="mesh")
         : materials(inMaterials), name(inName)
     {
-        loadModel(path);
-
-		animatedTransforms.emplace_back(glm::rotate(45.0f, glm::vec3(1.0, 0, 0)));
-
-		for (uint32 i = 1; i < 50; i++)
+		for (size_t i = 0; i < 50; i++)
 		{
-			animatedTransforms.emplace_back(glm::mat4(1.0f));
+			restPosition.emplace_back(glm::mat4(1.0));
 		}
+
+		loadModel(path);
 	}
 
 	void draw(Shader& shader, const uint32 count, const float deltaTime)
     {
+		
+		if (!init)
+		{
+			shader.setMat4fVec("bones", restPosition);
+			init != init;
+		}
+
+		// Load rest position to gpu
+		static int angle = 0;
+		if (skeleton)
+		{
+			restPosition[4] = glm::rotate(glm::radians((float)++angle), glm::vec3(1, 0, 0));
+			shader.setMat4fVec("bones", restPosition);
+		}
 		// set materials
         if (materials && materials->size() > 0)
             for (uint32 i = 0; i < meshes.size(); i++)
@@ -327,13 +340,18 @@ private:
 		// Skeleton of the model
 		skeleton = (Bone*) model->skeleton;
 		
-		if  (skeleton)
+		if (skeleton)
+		{
+			int i = 0;
+			// Get ordered array of matrices for rest position
 			for (auto transform : model->bonesTransformsArray)
 			{
 				glm::mat4 matrix;
 				memcpy(&matrix[0][0], transform, sizeof(float) * 16);
-				boneArray.emplace_back(matrix);
+				//restPosition[i++] = (matrix);
+				restPosition.emplace_back(matrix);
 			}
+		}
 		
 		delete model;
     }

@@ -17,8 +17,11 @@ out vec4 vPos;
 
 void main()
 {
-    mat4 boneTransform =  bones[indices.x] * weights.x;
-    vec4 pos = vec4(position, 1.0);
+    mat4 boneTransform =  mat4(1.0) + bones[indices.x] * weights.x;/* + bones[indices.y] * weights.y
+                       +  bones[indices.z] * weights.z + bones[indices.w] * weights.w;*/
+
+
+    vec4 pos = boneTransform * vec4(position, 1.0);
     gl_Position = transform * pos;
     
     uvCoord = texCoord;
