@@ -7,6 +7,7 @@
 #include <GLM/gtx/matrix_interpolation.hpp>
 #include <GLM/gtc/type_ptr.hpp>
 #include <vector>
+#include <utility> // pair
 #include "MUDImporter/mud_importer.hpp"
 #include "Animator.h"
 
@@ -180,33 +181,37 @@ class Model
 	Bone* skeleton;
 
 	// matrices of rest position in order
-	std::vector<glm::mat4> restPosition;
+	std::vector<std::pair<glm::mat4*, glm::mat4*>> bindPoses;
 
 	// Animations
 	std::vector<Animation> animations;
 
-	// DEBUG NAME
+	// DEBUG
 	const std::string name;
+	std::vector<glm::mat4> currentPose;
+
 public:
     Model(const std::string& path, std::vector<Material>* inMaterials = nullptr, const std::string& inName="mesh")
         : materials(inMaterials), name(inName)
     {
 		loadModel(path);
+		for (auto pair : bindPoses)
+		{
+			currentPose.emplace_back(*pair.first);
+		}
 	}
 
 	void draw(Shader& shader, const uint32 count, const float deltaTime)
     {
-		
 		if (!init)
 		{
-			shader.setMat4f("bones", glm::mat4(1.0f));
 			init = !init;
+			shader.setMat4f("bones", glm::mat4(1));
 		}
 
-		// Load animated position to gpu
 		if (skeleton)
 		{
-			shader.setMat4fVec("bones", restPosition);
+			shader.setMat4fVec("bones", currentPose);
 		}
 
 		// set materials
@@ -292,12 +297,13 @@ private:
 		if (skeleton)
 		{
 			int i = 0;
-			// Get ordered array of matrices for rest position
-			for (auto transform : model->bonesTransformsArray)
+			// Get ordered array of pair (bind transforms, inverse bind transform)
+			for (auto pairT : model->bindTransforms)
 			{
-				glm::mat4 matrix;
-				memcpy(&matrix[0][0], transform, sizeof(float) * 16);
-				restPosition.emplace_back(glm::mat4(1.0f));
+				std::pair<glm::mat4*, glm::mat4*> pair;
+				pair.first = (glm::mat4*) pairT.first;
+				pair.second= (glm::mat4*) pairT.second;
+				bindPoses.emplace_back(pair);
 			}
 		}
 		

@@ -10,6 +10,7 @@ struct Bone
 	int id;
 	Bone* parent;
 	glm::mat4 bindOffset;	// Original offset relative to the parent
+	glm::mat4 inverseBindOffset;
 	std::vector<Bone*> children;
 	const char* debugName;
 };

@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iostream>
 #include <iterator>   // istream_iterator
+#include <algorithm> // sort
 
 void quaternionToMatrix(MUDLoader::quatd& q, MUDLoader::mat4& mat)
 {
@@ -29,6 +30,69 @@ void translationToMatrix(MUDLoader::vec3& vec, MUDLoader::mat4& mat)
 	mat.xw = vec.x;
 	mat.yw = vec.y;
 	mat.zw = vec.z;
+}
+
+MUDLoader::mat4 inverseMat4(const MUDLoader::mat4& matrix)
+{
+	using namespace MUDLoader;
+
+	decimal Coef00 = matrix.zz * matrix.ww - matrix.wz * matrix.zw;
+	decimal Coef02 = matrix.yz * matrix.ww - matrix.wz * matrix.yw;
+	decimal Coef03 = matrix.yz * matrix.zw - matrix.zz * matrix.yw;
+	
+	decimal Coef04 = matrix.zy * matrix.ww - matrix.wy * matrix.zw;
+	decimal Coef06 = matrix.yy * matrix.ww - matrix.wy * matrix.yw;
+	decimal Coef07 = matrix.yy * matrix.zw - matrix.zy * matrix.yw;
+	
+	decimal Coef08 = matrix.zy * matrix.wz - matrix.wy * matrix.zz;
+	decimal Coef10 = matrix.yy * matrix.wz - matrix.wy * matrix.yz;
+	decimal Coef11 = matrix.yy * matrix.zz - matrix.zy * matrix.yz;
+	
+	decimal Coef12 = matrix.zx * matrix.ww - matrix.wx * matrix.zw;
+	decimal Coef14 = matrix.yx * matrix.ww - matrix.wx * matrix.yw;
+	decimal Coef15 = matrix.yx * matrix.zw - matrix.zx * matrix.yw;
+	
+	decimal Coef16 = matrix.zx * matrix.wz - matrix.wx * matrix.zz;
+	decimal Coef18 = matrix.yx * matrix.wz - matrix.wx * matrix.yz;
+	decimal Coef19 = matrix.yx * matrix.zz - matrix.zx * matrix.yz;
+	
+	decimal Coef20 = matrix.zx * matrix.wy - matrix.wx * matrix.zy;
+	decimal Coef22 = matrix.yx * matrix.wy - matrix.wx * matrix.yy;
+	decimal Coef23 = matrix.yx * matrix.zy - matrix.zx * matrix.yy;
+
+	vec4 Fac0 = {Coef00, Coef00, Coef02, Coef03};
+	vec4 Fac1 = {Coef04, Coef04, Coef06, Coef07};
+	vec4 Fac2 = {Coef08, Coef08, Coef10, Coef11};
+	vec4 Fac3 = {Coef12, Coef12, Coef14, Coef15};
+	vec4 Fac4 = {Coef16, Coef16, Coef18, Coef19};
+	vec4 Fac5 = {Coef20, Coef20, Coef22, Coef23};
+
+	vec4 Vec0 = {matrix.yx, matrix.xx, matrix.xx, matrix.xx};
+	vec4 Vec1 = {matrix.yy, matrix.xy, matrix.xy, matrix.xy};
+	vec4 Vec2 = {matrix.yz, matrix.xz, matrix.xz, matrix.xz};
+	vec4 Vec3 = {matrix.yw, matrix.xw, matrix.xw, matrix.xw};
+
+	vec4 Inv0 = {Vec1 * Fac0 - Vec2 * Fac1 + Vec3 * Fac2};
+	vec4 Inv1 = {Vec0 * Fac0 - Vec2 * Fac3 + Vec3 * Fac4};
+	vec4 Inv2 = {Vec0 * Fac1 - Vec1 * Fac3 + Vec3 * Fac5};
+	vec4 Inv3 = {Vec0 * Fac2 - Vec1 * Fac4 + Vec2 * Fac5};
+
+	vec4 SignA = {+1, -1, +1, -1};
+	vec4 SignB = {-1, +1, -1, +1};
+	mat4 Inverse(Inv0 * SignA, Inv1 * SignB, Inv2 * SignA, Inv3 * SignB);
+
+	vec4 Row0;
+	Row0.x = Inverse[0].x;
+	Row0.y = Inverse[1].x;
+	Row0.z = Inverse[2].x;
+	Row0.w = Inverse[3].x;
+
+	vec4 Dot0(matrix[0] * Row0);
+	decimal Dot1 = (Dot0.x + Dot0.y) + (Dot0.z + Dot0.w);
+
+	decimal OneOverDeterminant = 1 / Dot1;
+
+	return Inverse * OneOverDeterminant;
 }
 
 
@@ -135,11 +199,13 @@ void helperBoneBuild(MUDLoader::Bone& bone, tinyxml2::XMLElement* boneNode)
 	MUDLoader::quatd rotationQuat = MUDLoader::quatd();
 	helperStrToVec4(rotation, rotationQuat);
 
-	quaternionToMatrix(rotationQuat, bone.offsetMatrix);
-	translationToMatrix(translationVec, bone.offsetMatrix);
+	quaternionToMatrix(rotationQuat, bone.bindOffset);
+	translationToMatrix(translationVec, bone.bindOffset);
+
+	bone.inverseBindOffset = inverseMat4(bone.bindOffset);
 }
 
-void skeletonBuild(tinyxml2::XMLElement* node, MUDLoader::Bone* parent, std::vector<MUDLoader::mat4*>& array)
+void skeletonBuild(tinyxml2::XMLElement* node, MUDLoader::Bone* parent, std::vector<MUDLoader::Bone*>& array)
 {
 	for (auto siblingNode = node; siblingNode != nullptr; siblingNode = siblingNode->NextSiblingElement("bone"))
 	{
@@ -151,7 +217,7 @@ void skeletonBuild(tinyxml2::XMLElement* node, MUDLoader::Bone* parent, std::vec
 		boneTmp->parent = parent;
 
 		// Matrix array
-		array.emplace_back(&boneTmp->offsetMatrix);
+		array.emplace_back(boneTmp);
 
 		skeletonBuild(siblingNode->FirstChildElement("bone"), boneTmp, array);
 	}
@@ -256,17 +322,34 @@ void MUDLoader::LoadASCII(const char * filePath, Model** model)
 	tinyxml2::XMLElement* skeletonNode = modelNode->FirstChildElement("skeleton");
 	
 	Bone* skeleton = nullptr;
-	std::vector<mat4*> boneArray;
+	std::vector<std::pair<mat4*, mat4*>> transformsArray;
 
 	if (skeletonNode)
 	{
-		// build the root bone (skeleton must have a unique root bone!)
+		// ID sorted bone array
+		std::vector<Bone*> bonesArray;
+
+		// CREATE the root bone (skeleton must have a unique root bone!)
 		skeleton = new Bone();
 		auto rootNode = skeletonNode->FirstChildElement("bone");
 		helperBoneBuild(*skeleton, rootNode);
+		bonesArray.emplace_back(skeleton);
 		
-		// build skeleton and transform array (should be sorted)
-		skeletonBuild(rootNode->FirstChildElement("bone"), skeleton, boneArray);
+		// BUILD skeleton and bone array (should be sorted)
+		skeletonBuild(rootNode->FirstChildElement("bone"), skeleton, bonesArray);
+
+		// SORT in case
+		std::sort(bonesArray.rbegin(), bonesArray.rend(), [](Bone* bone1, Bone* bone2)
+		{
+			return bone1->id > bone2->id;
+		});
+
+		// BUILD transforms array
+		for (auto bone : bonesArray)
+		{
+			std::pair<mat4*, mat4*> pair(&bone->bindOffset, &bone->inverseBindOffset);
+			transformsArray.emplace_back(pair);
+		}
 	}
-	*model = new Model({ meshes, skeleton, boneArray });
+	*model = new Model({ meshes, skeleton, transformsArray });
 }
