@@ -181,7 +181,7 @@ class Model
 	Bone* skeleton;
 
 	// matrices of rest position in order
-	std::vector<std::pair<glm::mat4*, glm::mat4*>> bindPoses;
+	std::vector<MUDLoader::tuple<int, glm::mat4*, glm::mat4*>> bindPoses;
 
 	// Animations
 	std::vector<Animation> animations;
@@ -195,10 +195,30 @@ public:
         : materials(inMaterials), name(inName)
     {
 		loadModel(path);
+
+		currentPose.reserve(bindPoses.size());
+
+		// DEBUG
+		Pose pose;
+		pose.timeStamp = 0;
+		
 		for (auto pair : bindPoses)
 		{
 			currentPose.emplace_back(*pair.first);
+			
+			PoseKey key;
+			key.position = glm::vec3((*pair.first)[3]);
+			key.rotation = glm::toQuat(*pair.first);
+			
+			pose.transforms.emplace_back(key);
 		}
+
+		Animation anim;
+		anim.duration = 1;
+		anim.ticksPerSec = 24;
+		anim.poses.emplace_back(pose);
+
+		animations.emplace_back(anim);
 	}
 
 	void draw(Shader& shader, const uint32 count, const float deltaTime)
@@ -211,6 +231,7 @@ public:
 
 		if (skeleton)
 		{
+			animate(deltaTime, animations[0], bindPoses, currentPose);
 			shader.setMat4fVec("bones", currentPose);
 		}
 
@@ -247,6 +268,13 @@ public:
     {
         return meshes[index];
     }
+
+	~Model()
+	{
+		if (skeleton)
+			deleteBones(skeleton);
+	}
+
 private:
     void loadModel(const std::string& path)
     {
@@ -300,15 +328,28 @@ private:
 			// Get ordered array of pair (bind transforms, inverse bind transform)
 			for (auto pairT : model->bindTransforms)
 			{
-				std::pair<glm::mat4*, glm::mat4*> pair;
+				MUDLoader::tuple<int, glm::mat4*, glm::mat4*> pair;
+
+				pair.parentID = pairT.parentID;
 				pair.first = (glm::mat4*) pairT.first;
 				pair.second= (glm::mat4*) pairT.second;
+				
 				bindPoses.emplace_back(pair);
 			}
 		}
 		
 		delete model;
     }
+
+	void deleteBones(Bone* bone)
+	{
+		for (size_t i = 0; i < bone->children.size(); i++)
+		{
+			deleteBones(bone->children[i]);
+		}
+		delete bone;
+		bone = nullptr;
+	}
 };
 
 

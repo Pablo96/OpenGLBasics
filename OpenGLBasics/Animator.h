@@ -31,9 +31,11 @@ struct Pose
 
 struct Animation
 {
-	const float duration; // duration in ticks
+	float duration; // duration in ticks
 	float ticksPerSec; // speed of the animation
 	std::vector<Pose> poses;
+
+	Animation() = default;
 };
 
 
@@ -44,6 +46,15 @@ struct Animation
 void searchPoses(const Animation& anim, Pose& pose1, Pose& pose2, const float currentTime)
 {
 	pose1 = anim.poses[0];
+	if (!anim.poses.size())
+		exit(264628466);
+
+	if ( (anim.poses.size() == 1) || !anim.duration)
+	{
+		pose2 = pose1;
+		return;
+	}
+
 	for (size_t i = 1; i < anim.poses.size(); i++)
 	{
 		if (anim.poses[i].timeStamp > currentTime)
@@ -66,8 +77,17 @@ glm::mat4 interpolatePoseTransform(const PoseKey& trans1, const PoseKey& trans2,
 	return posMat * rotMat;
 }
 
-void animate(const float currentTime, Animation& animation, std::vector<glm::mat4>& currentTransforms)
+void animate(const float currentTime, Animation& animation, std::vector<MUDLoader::tuple<int, glm::mat4*, glm::mat4*>>& bindTransforms, std::vector<glm::mat4>& currentTransforms)
 {
+	
+	auto numberOfBones = bindTransforms.size();
+	//bonePose relative to the parentBone
+	std::vector<glm::mat4> bonePoseRelative(numberOfBones);
+	//bonePose relative to the model
+	std::vector<glm::mat4> bonePoseAbsolute(numberOfBones);
+	
+	currentTransforms.reserve(numberOfBones);
+
 	// factor of the blending [0 : 1]
 	const float factor = (currentTime * animation.ticksPerSec) / animation.duration;
 	
@@ -75,10 +95,26 @@ void animate(const float currentTime, Animation& animation, std::vector<glm::mat
 	Pose pose1, pose2;
 	searchPoses(animation, pose1, pose2, currentTime);
 
-
-	for (size_t i = 0; i < pose1.transforms.size(); i++)
+	// APPLY animation
+	for (size_t i = 0; i < numberOfBones; i++)
 	{
+		// this is the animation
 		glm::mat4 transform = interpolatePoseTransform(pose1.transforms[i], pose2.transforms[i], factor);
-		currentTransforms.emplace_back(transform);
+		// apply it to the bone
+		bonePoseRelative[i] = (*bindTransforms[0].first) * transform;
+	}
+
+	// TRANSFORM parent space
+	bonePoseAbsolute[0] = bonePoseRelative[0];
+	for (size_t i = 1; i < numberOfBones; i++)
+	{
+		int parentID = bindTransforms[i].parentID;
+		bonePoseAbsolute[i] = bonePoseAbsolute[parentID] * bonePoseRelative[i];
+	}
+
+	// APPLY modelTransform
+	for (size_t i = 0; i < numberOfBones; i++)
+	{
+		currentTransforms[i] = bonePoseAbsolute[i] * (*bindTransforms[i].second);
 	}
 };

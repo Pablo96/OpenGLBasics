@@ -1,9 +1,16 @@
 #pragma once
 #include <vector>
-#include <utility> //Pair
 
 namespace MUDLoader
 {
+	template<class A, class B, class C>
+	struct tuple
+	{
+		A parentID;
+		B first;
+		C second;
+	};
+
 	#define MAX_VERTEX_BONES 4	// Max number of bones per vertex
 #ifdef MUD_IMPORTER_HIGHP
 	typedef double decimal;
@@ -166,7 +173,7 @@ namespace MUDLoader
 	{
 		std::vector<Mesh> meshes;
 		Bone* skeleton = nullptr;
-		std::vector<std::pair<mat4*, mat4*>> bindTransforms;
+		std::vector<tuple<int, mat4*, mat4*>> bindTransforms;
 	};
 
 	void LoadASCII(const char* filePath, Model** model);

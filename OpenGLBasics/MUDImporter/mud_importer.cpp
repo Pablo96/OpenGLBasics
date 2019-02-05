@@ -205,6 +205,11 @@ void helperBoneBuild(MUDLoader::Bone& bone, tinyxml2::XMLElement* boneNode)
 	bone.inverseBindOffset = inverseMat4(bone.bindOffset);
 }
 
+void helperBuildInverseBindAbsolute()
+{
+
+}
+
 void skeletonBuild(tinyxml2::XMLElement* node, MUDLoader::Bone* parent, std::vector<MUDLoader::Bone*>& array)
 {
 	for (auto siblingNode = node; siblingNode != nullptr; siblingNode = siblingNode->NextSiblingElement("bone"))
@@ -322,7 +327,7 @@ void MUDLoader::LoadASCII(const char * filePath, Model** model)
 	tinyxml2::XMLElement* skeletonNode = modelNode->FirstChildElement("skeleton");
 	
 	Bone* skeleton = nullptr;
-	std::vector<std::pair<mat4*, mat4*>> transformsArray;
+	std::vector<tuple<int, mat4*, mat4*>> transformsArray;
 
 	if (skeletonNode)
 	{
@@ -347,7 +352,12 @@ void MUDLoader::LoadASCII(const char * filePath, Model** model)
 		// BUILD transforms array
 		for (auto bone : bonesArray)
 		{
-			std::pair<mat4*, mat4*> pair(&bone->bindOffset, &bone->inverseBindOffset);
+			int id;
+			if (bone->parent)
+				id = bone->parent->id;
+			else
+				id = -1;
+			tuple<int, mat4*, mat4*> pair = { id, &bone->bindOffset, &bone->inverseBindOffset };
 			transformsArray.emplace_back(pair);
 		}
 	}
