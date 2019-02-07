@@ -7,7 +7,6 @@
 #include <GLM/gtx/matrix_interpolation.hpp>
 #include <GLM/gtc/type_ptr.hpp>
 #include <vector>
-#include <utility> // pair
 #include "MUDImporter/mud_importer.hpp"
 #include "Animator.h"
 
@@ -186,9 +185,11 @@ class Model
 	// Animations
 	std::vector<Animation> animations;
 
+	// Drawing pose
+	std::vector<glm::mat4> currentPose;
+	
 	// DEBUG
 	const std::string name;
-	std::vector<glm::mat4> currentPose;
 
 public:
     Model(const std::string& path, std::vector<Material>* inMaterials = nullptr, const std::string& inName="mesh")
