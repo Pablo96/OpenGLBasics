@@ -91,15 +91,21 @@ void helperStrToQuat(const char* charArray, MUDLoader::quat& vec)
 	}
 }
 
+
+
+
+
 MUDLoader::mat4 helperBuildInverseBindAbsolute(MUDLoader::Bone* bone)
 {
 	using namespace MUDLoader;
 
+	int i = 0;
 	mat4 transform = bone->bindOffset;
 
 	for (Bone* parent = bone->parent; parent != nullptr; parent = parent->parent)
 	{
 		transform = parent->bindOffset * transform;
+		i++;
 	}
 
 	return inverseMat4(transform);
@@ -134,12 +140,14 @@ void skeletonBuild(tinyxml2::XMLElement* node, MUDLoader::Bone* parent, std::vec
 	for (auto siblingNode = node; siblingNode != nullptr; siblingNode = siblingNode->NextSiblingElement("bone"))
 	{
 		MUDLoader::Bone* boneTmp = new MUDLoader::Bone();
-		helperBoneBuild(*boneTmp, siblingNode);
 		
 		// double linking
 		parent->children.emplace_back(boneTmp);
 		boneTmp->parent = parent;
-
+		
+		// bone data
+		helperBoneBuild(*boneTmp, siblingNode);
+		
 		// Matrix array
 		array.emplace_back(boneTmp);
 
