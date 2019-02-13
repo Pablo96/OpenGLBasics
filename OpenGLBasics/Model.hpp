@@ -1,7 +1,5 @@
 #pragma once
 #include "main.h"
-#define GLEW_STATIC
-#include <GL/glew.h>
 #include <GLM/glm.hpp>
 #include <GLM/gtx/quaternion.hpp>
 #include <GLM/gtx/matrix_interpolation.hpp>
@@ -183,7 +181,7 @@ public:
 		loadModel(path);
 	}
 
-	void draw(Shader& shader, const uint32 count, const float deltaTime)
+	void draw(Shader& shader, const uint32 count)
 	{
 
 		// set materials

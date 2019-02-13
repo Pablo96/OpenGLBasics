@@ -1,5 +1,6 @@
 #include "main.h"
 #include "Model.hpp"
+#include "k_tree.hpp"
 #include <GLFW/glfw3.h>
 
 #include "ImGui\imgui.h"
@@ -102,8 +103,18 @@ int run(GLFWwindow* window)
 	glm::mat4 charMat = glm::translate(glm::vec3(0, -0.8, 0))
 		* glm::rotate(glm::radians(-90.0f), glm::vec3(1, 0, 0)) * glm::scale(glm::vec3(.2f, .2f, .2f));
 
-	glm::mat4 transform;
+	// SCENE
+	ktree scene;
+	
+	scene.AddModel(&floor, floorMat);
+	auto modelNode = scene.AddModel(&model, modelMat);
+	auto charNode = scene.AddModel(&character, charMat);
+	scene.SetParent(charNode, modelNode);
+
+	
+	
 	float angle = 0.0f;
+	glm::mat4 transform;
 
 	glm::vec3 translation(1, 0, 0);
 	glClearColor(0.2f, 0.48f, 1.0f, 1.0f);
@@ -121,9 +132,10 @@ int run(GLFWwindow* window)
 		// Logic
 		angle += .5f;
 		angle = (angle > 360.0f) ? 0.0f : angle;
+		modelMat = glm::translate(translation);
+
         PVmat = perspective * cam.GetViewMatrix();
         camPos = cam.Position;
-		modelMat = glm::translate(translation);
 		
 
         // RENDER CALLS OR CODE
@@ -134,21 +146,20 @@ int run(GLFWwindow* window)
 		shader.bind();
 		shader.setVec4f("viewPos", camPos.x, camPos.y, camPos.z);
 
-		// set the shadow map
 		transform = PVmat * modelMat;
 		model.setTransforms(1, &transform, 0);
 		model.setTransforms(1, &modelMat, 1);
-		model.draw(shader, 1, deltaTime);
+		model.draw(shader, 1);
 
 		transform = PVmat * floorMat;
 		floor.setTransforms(1, &transform, 0);
 		floor.setTransforms(1, &floorMat, 1);
-		floor.draw(shader, 1, deltaTime);
+		floor.draw(shader, 1);
 
 		transform = PVmat * charMat;
 		character.setTransforms(1, &transform, 0);
 		character.setTransforms(1, &charMat, 1);
-		character.draw(shader, 1, deltaTime);
+		character.draw(shader, 1);
 
 		// GUI DATA
 		// 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.

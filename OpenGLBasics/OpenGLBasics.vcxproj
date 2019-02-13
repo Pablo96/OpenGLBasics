@@ -89,6 +89,7 @@
     <ClCompile Include="ImGui\imgui_impl_glfw.cpp" />
     <ClCompile Include="ImGui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="ImGui\imgui_widgets.cpp" />
+    <ClCompile Include="k_tree.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MUDImporter\mud_importer.cpp" />
     <ClCompile Include="MUDImporter\tinyxml2.cpp" />
@@ -102,6 +103,7 @@
     <ClInclude Include="ImGui\imstb_rectpack.h" />
     <ClInclude Include="ImGui\imstb_textedit.h" />
     <ClInclude Include="ImGui\imstb_truetype.h" />
+    <ClInclude Include="k_tree.hpp" />
     <ClInclude Include="main.h" />
     <ClInclude Include="Model.hpp" />
     <ClInclude Include="MUDImporter\mud_importer.hpp" />
