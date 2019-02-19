@@ -2,7 +2,7 @@
 #include <unordered_set>
 #include <GLM/glm.hpp>
 
-class node
+class Node
 {
 	friend class ktree;
 
@@ -10,12 +10,12 @@ private:
 	glm::mat4 local_transform;
 	glm::mat4 world_transform;
 
-	void* model;
+	const void* model;
 
-	node* parent;
-	std::unordered_set<node*> children;
+	Node* parent;
+	std::unordered_set<Node*> children;
 protected:
-	node(glm::mat4& in_transform, void* in_model = nullptr, node* in_parent = nullptr)
+	Node(const glm::mat4& in_transform, const void* in_model = nullptr, Node* in_parent = nullptr)
 		: model(in_model), local_transform(in_transform), parent(in_parent)
 	{
 		if (parent)
@@ -31,27 +31,39 @@ protected:
 
 class ktree
 {
-	node* root;
+	Node* root;
 
 public:
-	ktree()
+	ktree(const glm::vec3* scene_position = nullptr, glm::mat4* scene_rotation = nullptr)
 	{
-		auto global_center = glm::mat4(1.0f);
-		root = new node(global_center);
+		glm::mat4 global_center;
+
+		// Location
+		global_center = (scene_position) ? glm::translate(*scene_position) : glm::mat4(1.0f);
+
+		// Rotaiton
+		if (scene_rotation)
+			global_center = global_center * (*scene_rotation);
+		
+		// Root node alloc
+		root = new Node(global_center);
 	}
 
 	// Add a model to the scene and return the node it is in.
 	// transform: if parent the transform is local to it.
-	node* AddModel(void* in_model, glm::mat4& in_transform, node* in_parent = nullptr);
+	Node* AddModel(const void* in_model, const glm::mat4& in_transform, Node* in_parent = nullptr);
 
 	// Set Parent to Node
-	void SetParent(node* in_node, node* in_parent);
+	void SetParent(Node* in_node, Node* in_parent);
 
 	// Delete the node in the scene
 	// returns false if not found
-	bool DeleteNode(node* in_node);
+	bool DeleteNode(Node* in_node);
+
+	// Update input node's children
+	virtual void Update(Node* in_node);
 
 private:
 
-	glm::mat4 computeWorldMatrix(node* in_node, glm::mat4& in_parentWorldMatrix);
+	void computeWorldMatrix(Node* in_node, glm::mat4& in_parentWorldMatrix);
 };

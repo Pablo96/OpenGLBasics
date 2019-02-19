@@ -108,6 +108,7 @@
     <ClInclude Include="Model.hpp" />
     <ClInclude Include="MUDImporter\mud_importer.hpp" />
     <ClInclude Include="MUDImporter\tinyxml2.h" />
+    <ClInclude Include="Scene.hpp" />
     <ClInclude Include="stb_image.h" />
   </ItemGroup>
   <ItemGroup>

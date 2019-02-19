@@ -12,6 +12,13 @@
 //				VERTEX, MESH AND MODEL
 //###################################################################
 
+enum TRANSFORM_TYPE : unsigned char
+{
+	PVM_TRANSFORM = 0,
+	MODEL_TRANSFORM = 1
+};
+
+
 struct Vertex
 {
     glm::vec3 pos;
@@ -28,10 +35,7 @@ class Mesh
     uint32 EBO; // Elements Buffer Object
 
     uint32 TBO; // Transforms Buffer Object
-    uint32 MBO; // Models Buffer Object
-
-	uint32 IBO;
-	uint32 WBO;
+    uint32 MBO; // Models transforms Buffer Object
 
     bool m_init;
 public:
@@ -139,7 +143,7 @@ public:
         glDrawElementsInstanced(GL_TRIANGLES, (uint32)indices.size(), GL_UNSIGNED_INT, NULL, count);
     }
 
-    void setTransforms(const uint32 count, const glm::mat4* matrices, const unsigned char type)
+    void setTransforms(const uint32 count, const glm::mat4* matrices, const TRANSFORM_TYPE type)
     {
         switch (type)
         {
@@ -167,9 +171,16 @@ public:
 
 class Model
 {
-    std::string directory;
+	// Meshes of the model, one per material
     std::vector<Mesh> meshes;
+	// Materials of the model
     std::vector<Material>* materials;
+	// Transforms of the instances of this model.
+	std::vector<glm::mat4*> world_matrices;
+
+protected:
+	// Directory so it is not loaded more than once from disk
+    std::string directory;
 	
 	// DEBUG
 	const std::string name;
@@ -205,7 +216,7 @@ public:
             }
     }
 
-    void setTransforms(const uint32 count, const glm::mat4* matrices, const unsigned char type)
+    void setTransforms(const uint32 count, const glm::mat4* matrices, const TRANSFORM_TYPE type)
     {
         for (auto mesh : meshes)
         {
@@ -217,10 +228,6 @@ public:
     {
         return meshes[index];
     }
-
-	~Model()
-	{
-	}
 
 private:
     void loadModel(const std::string& path)
