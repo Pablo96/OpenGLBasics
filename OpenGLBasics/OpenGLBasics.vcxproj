@@ -136,10 +136,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="include\mud_file\mud_importer.cpp" />
+    <ClCompile Include="include\mud_file\tinyxml2.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.hpp" />
+    <ClInclude Include="include\mud_file\mud_importer.hpp" />
+    <ClInclude Include="include\mud_file\tinyxml2.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="Model.hpp" />
     <ClInclude Include="Shader.hpp" />

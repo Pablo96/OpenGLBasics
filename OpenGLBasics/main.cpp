@@ -6,13 +6,20 @@
 #include <GLM/glm.hpp>
 #include <GLM/gtx/transform.hpp>
 #include <math.h>
+#include <ostream>
 
 #define BUFFER_SIZE 1024
 #define WIDTH 1280
 #define HEIGHT 720
 
-glm::vec3 camPos(-2.4f, 1.0f, -2.6f);
-Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 49, -14);
+std::ostream& operator<<(std::ostream& os, const glm::vec3& vec)
+{
+	os << '(' << vec.x << ',' << vec.y << ',' <<  vec.z << ')';
+	return os;
+}
+
+glm::vec3 camPos(2.47f, 1.01f, 2.06f);
+Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, -137.7f, -17.9f);
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 // timing
@@ -52,33 +59,10 @@ int main(int argc, char** argv)
 
 int run(GLFWwindow* window)
 {
-    glm::vec3 sunDir(1, 1, 1);
-	glm::vec3 sunPos = sunDir * 1.8f;
-
     // SHADERS
-    Shader shader("res\\Shaders\\vertexInstanced.vert", "res\\Shaders\\fragment_PBR.frag");
+    Shader shader("res\\Shaders\\vertex_basic.vert", "res\\Shaders\\fragment_lit.frag");
     shader.bind();
-    shader.setInt("material.albedo", 0);
-	shader.setInt("material.MRA", 1);
-	shader.setInt("shadowMap", 2);
 
-	shader.setVec4f("sun.direction", sunDir.x, sunDir.y, sunDir.z, 0);
-	shader.setVec4f("sun.position", sunPos.x, sunPos.y, sunPos.z, 1.0f),
-    shader.setVec4f("sun.ambient", 0.2f, 0.2f, 0.2f);
-    shader.setVec4f("sun.diffuse", 1.0f, 0.9f, 0.8f);
-    shader.setVec4f("sun.specular");
-	shader.setFloat("sun.energy", 10.5f);
-	
-
-	Shader r2TexShader("res\\Shaders\\renderToTexture.vert", "res\\Shaders\\renderToTexture.frag");
-	r2TexShader.bind();
-	r2TexShader.setInt("screenTexture", 0);
-
-	Shader shadowMap("res\\Shaders\\shadowMap.vert", "res\\Shaders\\empty.frag");
-
-	Shader unlitShader("res\\Shaders\\vertexInstanced.vert", "res\\Shaders\\fragment_unlit.frag");
-	unlitShader.setInt("diffuse", 0);
-    
 	
 	// MODELS
     Texture tireTexD("res\\Textures\\Tire_df.png");
@@ -92,145 +76,19 @@ int run(GLFWwindow* window)
 	Material rimMat = { &rimTexD, &rimTexS, &rimTexN, 256.0f};
 
     std::vector<Material> materials = { tireMat, rimMat };
-    ModelInstanced model("res\\Models\\wheel.obj", &materials, "Wheel");
+    Model model("res\\Models\\wheel.mudm", &materials);
 
-	Texture floorTexD("res\\Textures\\RedBrick\\brick_df.png");
-	Texture floorTexS("res\\Textures\\blue.bmp");
-	Texture floorTexN("res\\Textures\\RedBrick\\brick_nm.png");
-	Material floorMaterial = { &floorTexD, &floorTexS, &floorTexN, 5.0f };
 	
-	std::vector<Material> floorMaterials = { floorMaterial };
-	ModelInstanced floor("res\\Models\\plane.obj", &floorMaterials);
-    
-	Texture sunD("res\\Textures\\white.bmp");
-	Material sunMaterial = { &sunD, nullptr, nullptr, 1.0f };
-
-	std::vector<Material> sunMaterials = { sunMaterial };
-	ModelInstanced sunModel("res\\Models\\sphere_lp.obj", &sunMaterials);
-
-	// when instanced is 2 drawcalls 1 per mesh (wheel)
-    const uint32 wheelsCount = 1;
-
     glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
     glm::mat4 PVmat = perspective * cam.GetViewMatrix();
 	
-	glm::mat4 floorMat = glm::translate(glm::vec3(0, -0.8, 0))
-		* glm::scale(glm::vec3(10.0f, 10.0f, 10.0f));
-	glm::mat3 floorNMat = glm::transpose(glm::inverse(glm::mat3(floorMat)));
-    
+	
 	glm::mat4 modelMat = glm::rotate(glm::radians(0.0f), glm::vec3(0, 1, 0));
     glm::mat3 normalMat = glm::transpose(glm::inverse(glm::mat3(modelMat)));
 	
-	glm::mat4 sunMat = glm::translate(sunPos * 5.0f) * glm::scale(glm::vec3(0.2f));
-	
 	glm::mat4 transform;
 	float angle = 0.0f;
-
-	// Screen plane
-	uint32 vao;
-	{
-
-		float vertices[] = 
-		{
-			// pos		// texcoord
-			-1.0f, -1.0f,		0.0f, 0.0f,
-			 1.0f, -1.0f,		1.0f, 0.0f,
-			 1.0f,  1.0f, 		1.0f, 1.0f,
-			-1.0f,  1.0f,		0.0f, 1.0f
-		};
-
-		uint32 indices[] = 
-		{
-			0, 1, 2,
-			2, 3, 0
-		};
-
-		uint32 VBO, EBO;
-		// Generate the buffers
-		glGenVertexArrays(1, &vao);
-		glGenBuffers(1, &VBO);
-		glGenBuffers(1, &EBO);
-		
-		// Bind the Array Object
-		glBindVertexArray(vao);
-
-
-
-		// Bind Vertex Buffer to the Array Object
-		glBindBuffer(GL_ARRAY_BUFFER, VBO);
-		// Reserve memory and Send data to the Vertex Buffer
-		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 16, vertices, GL_STATIC_DRAW);
-
-
-		// Bind Element Buffer to the Array Object
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-		// Reserve memory and Send data to the Elment Buffer
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int),
-			indices, GL_STATIC_DRAW);
-
-
-
-		// Set the atribute pointers
-		// vertex positions
-		glEnableVertexAttribArray(0);
-		// vertex texture coords
-		glEnableVertexAttribArray(1);
-
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)0);
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void*)(sizeof(float) * 2));
-
-	}
-
-
-	//////////////////////////////////////
-	//			SHADOW MAPPING			//
-	//////////////////////////////////////
-
-	// the depth map framebuffer
-	uint32 depthMapFBO;
-	glGenFramebuffers(1, &depthMapFBO);
-
-	// 2D texture for the framebuffer
-	const int shadowWidth = 256;
-	const int shadowHeight = shadowWidth;
-	uint32 depthMap;
-	{
-		glGenTextures(1, &depthMap);
-		glBindTexture(GL_TEXTURE_2D, depthMap);
-		// Only reserve memory but dont pass data sincce it will be filled by the framebuffer renders.
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
-			shadowWidth, shadowHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		// fix outside texture coord shadows
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-		float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-		glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-
-		// bind the depth framebuffer
-		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-		// attach the depthmap to the framebuffer
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
-		// tell opengl the framebuffer will not have draw attachment else wont be complete
-		glDrawBuffer(GL_NONE);
-		glReadBuffer(GL_NONE);
-		// unbind the framebuffer binding the default one
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	}
-
-	// create the view and projection matrix(directional light is ortho proj)
-	const float near_plane = 1.0f, far_plane = 6.0f;
-	const float shadowSize = 0.95f;
-	glm::mat4 lightProjMat = glm::ortho(-shadowSize, shadowSize, -shadowSize, shadowSize, near_plane, far_plane);
-	glm::mat4 lightViewMat = glm::lookAt(sunPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 PVmatLight = lightProjMat * lightViewMat;
-	shadowMap.bind();
-	shadowMap.setMat4f("lightSpaceMatrix", PVmatLight);
-	shader.bind();
-	shader.setMat4f("lightSpaceMatrix", PVmatLight);
-
+	
 
 	
     std::cout.flush();
@@ -241,6 +99,7 @@ int run(GLFWwindow* window)
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         std::cout << deltaTime * 1000 << "ms" << std::endl;
+
         // Logic
 		angle += .5f;
 		angle = (angle > 360.0f) ? 0.0f : angle;
@@ -252,56 +111,20 @@ int run(GLFWwindow* window)
 
         // RENDER CALLS OR CODE
 
-		// Render the shadow map
-		{
-			glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-			glViewport(0, 0, shadowWidth, shadowHeight);
-			glEnable(GL_DEPTH_TEST);
-			glClear(GL_DEPTH_BUFFER_BIT);
-
-			shadowMap.bind();
-
-			shadowMap.setMat4f("model", modelMat);
-			model.draw(shader, 1);
-
-			shadowMap.setMat4f("model", floorMat);
-			floor.draw(shader, 1);
-		}
 		
-
 		// Render to texture
 		{
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			glEnable(GL_DEPTH_TEST);
-			glViewport(0, 0, WIDTH, HEIGHT);
 			glClearColor(0.2f, 0.48f, 1.0f, 1.0f);
 
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			unlitShader.bind();
-			transform = PVmat * sunMat;
-			sunModel.setTransforms(1, &transform, 0);
-			sunModel.draw(unlitShader, 1);
-			
-
 			shader.bind();
 			shader.setVec4f("viewPos", camPos.x, camPos.y, camPos.z);
-
-			// set the shadow map
-			glActiveTexture(GL_TEXTURE0 + 2);
-			glBindTexture(GL_TEXTURE_2D, depthMap);
+			shader.setMat4f("transform", transform);
+			shader.setMat4f("model", modelMat) ;
 
 			transform = PVmat * modelMat;
-			model.setTransforms(1, &transform, 0);
-			model.setTransforms(1, &modelMat, 1);
-			model.setTransforms(1, &normalMat);
-			model.draw(shader, 1);
-
-			transform = PVmat * floorMat;
-			floor.setTransforms(1, &transform, 0);
-			floor.setTransforms(1, &floorMat, 1);
-			floor.setTransforms(1, &floorNMat);
-			floor.draw(shader, 1);
+			model.draw(shader);
 		}
 
         // Render the frame
