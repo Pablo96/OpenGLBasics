@@ -181,55 +181,6 @@ int run(GLFWwindow* window)
 
 	}
 
-	
-	// FRAMEBUFFER
-	uint32 fbo;
-	glGenFramebuffers(1, &fbo);
-	
-	//GL_FRAMEBUFFER: all the next read and write framebuffer operations will affect the currently bound framebuffer.
-	//GL_READ_FRAMEBUFFER: Read only.
-	//GL_DRAW_FRAMEBUFFER: Wtite only.
-	
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-
-	// Create a texxture attachment
-	uint32 texture;
-	{
-		glGenTextures(1, &texture);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		// Only reserve memory but dont pass data sincce it will be filled by the framebuffer renders.
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, WIDTH, HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	}
-
-	// attach it to the framebuffer
-	// level: mipmap level.
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
-
-	// Create a render buffer (the render buffer is a buffer like the texture but raw{not converted to texture format}
-	// so it is faster to write and copy but cant be easyly accessed after.
-	uint32 rbo;
-	glGenRenderbuffers(1, &rbo);
-	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, WIDTH, HEIGHT);
-	// bind the render buffer to the framebuffer
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
-
-
-	// Check if it is currently bound since it need to have at least one color attachment.
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-	{
-		std::cout << "Warning: Framebuffer is not complete!\n";
-	}
-
-	// only the default framebuffer (0) have visual output. All the others are for offscreen rendering.
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	//glDeleteFramebuffers(1, &fbo);
-	
 
 	//////////////////////////////////////
 	//			SHADOW MAPPING			//
@@ -320,7 +271,7 @@ int run(GLFWwindow* window)
 
 		// Render to texture
 		{
-			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glEnable(GL_DEPTH_TEST);
 			glViewport(0, 0, WIDTH, HEIGHT);
 			glClearColor(0.2f, 0.48f, 1.0f, 1.0f);
@@ -352,24 +303,6 @@ int run(GLFWwindow* window)
 			floor.setTransforms(1, &floorNMat);
 			floor.draw(shader, 1);
 		}
-		
-
-		// render to screen
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glDisable(GL_DEPTH_TEST);
-		
-		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		
-		r2TexShader.bind();
-		glBindVertexArray(vao);
-
-		glActiveTexture(GL_TEXTURE0);
-		//glBindTexture(GL_TEXTURE_2D, depthMap);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
-		
 
         // Render the frame
         glfwSwapBuffers(window);
