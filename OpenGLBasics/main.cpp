@@ -2,6 +2,7 @@
 #include "Model.hpp"
 #include "Camera.hpp"
 #include "Shader.hpp"
+#include "Shader_Legacy.hpp"
 #include <GLFW/glfw3.h>
 #include <GLM/glm.hpp>
 #include <GLM/gtx/transform.hpp>
@@ -32,6 +33,7 @@ void initLog()
     std::ios_base::sync_with_stdio(false);
     setvbuf(stdout, 0, _IOLBF, BUFFER_SIZE);
 }
+
 int createWindow(GLFWwindow** window);
 int configOpenGL();
 int run(GLFWwindow* window);
@@ -60,10 +62,13 @@ int main(int argc, char** argv)
 int run(GLFWwindow* window)
 {
     // SHADERS
-    Shader shader("res\\Shaders\\vertex_basic.vert", "res\\Shaders\\fragment_lit.frag");
-    shader.bind();
+	// Note: They should be pointer since if they are copied the destructor is not called
+    Shader* v_Shader = new Shader("res\\Shaders\\vertex_basic.vert", SHADER_TYPE::VERTEX);
+	Shader* f_Shader = new Shader("res\\Shaders\\fragment_lit.frag", SHADER_TYPE::FRAGMENT);
 
-	
+	std::vector<Shader*> shaders = { v_Shader, f_Shader };
+	Program shader(shaders);
+
 	// MODELS
     Texture tireTexD("res\\Textures\\Tire_df.png");
     Texture tireTexS("res\\Textures\\Tire_sp.png");
@@ -110,9 +115,6 @@ int run(GLFWwindow* window)
 		
 
         // RENDER CALLS OR CODE
-
-		
-		// Render to texture
 		{
 			glClearColor(0.2f, 0.48f, 1.0f, 1.0f);
 
@@ -124,10 +126,10 @@ int run(GLFWwindow* window)
 			shader.setMat4f("model", modelMat) ;
 
 			transform = PVmat * modelMat;
-			model.draw(shader);
+			model.draw(*reinterpret_cast<Program*>(&shader));
 		}
 
-        // Render the frame
+        // Present the frame
         glfwSwapBuffers(window);
         // get the events
         glfwPollEvents();

@@ -3,12 +3,13 @@
 #include <GL/glew.h>
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include <string>
 #include <GLM/glm.hpp>
 
 typedef unsigned int uint32;
 
-std::string getShaderSrc(const char* fileName)
+static std::string getShaderSrc(const char* fileName)
 {
 	std::ifstream file;
 	file.open(fileName);
@@ -32,7 +33,7 @@ std::string getShaderSrc(const char* fileName)
 	return output;
 }
 
-void shaderCompileStatus(uint32 shader)
+static void shaderCompileStatus(uint32 shader)
 {
 	int  success;
 	char infoLog[512];
@@ -44,63 +45,78 @@ void shaderCompileStatus(uint32 shader)
 	}
 }
 
+enum SHADER_TYPE
+{
+	VERTEX = GL_VERTEX_SHADER,
+	FRAGMENT = GL_FRAGMENT_SHADER,
+};
+
 class Shader
 {
+	uint32 m_shader;
 public:
-	// the program ID
-	unsigned int ID;
-
-	// constructor reads and builds the shader
-	Shader(const char* vertexPath, const char* fragmentPath)
+	Shader(const char* in_path, const SHADER_TYPE in_type)
 	{
 		// Get the shader sources and compile them
-		auto stringSource = getShaderSrc(vertexPath);
-		auto vertexShaderSource = stringSource.c_str();
-		uint32 vertexShader;
-		vertexShader = glCreateShader(GL_VERTEX_SHADER);
-		glShaderSource(vertexShader, 1, &vertexShaderSource, 0);
-		glCompileShader(vertexShader);
-		shaderCompileStatus(vertexShader);
+		auto stringSource = getShaderSrc(in_path);
+		auto shaderSource = stringSource.c_str();
+		m_shader = glCreateShader(in_type);
+		glShaderSource(m_shader, 1, &shaderSource, NULL);
+		glCompileShader(m_shader);
+		shaderCompileStatus(m_shader);
+	}
 
-		stringSource = getShaderSrc(fragmentPath);
-		const char* fragmentShaderSource = stringSource.c_str();
-		uint32 fragmentShader;
-		fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-		glShaderSource(fragmentShader, 1, &fragmentShaderSource, 0);
-		glCompileShader(fragmentShader);
-		shaderCompileStatus(fragmentShader);
+	~Shader()
+	{
+		glDeleteShader(m_shader);
+	}
 
+	uint32 Get()
+	{
+		return m_shader;
+	}
+};
+
+class Program
+{
+	// the program ID
+	uint32 m_program;
+public:
+
+	// constructor reads and builds the shader
+	Program(std::vector<Shader*>& in_shaders)
+	{
 		// create the shader program
-		ID = glCreateProgram();
+		m_program = glCreateProgram();
+		
 		// attach the shaders to the program
-		glAttachShader(ID, vertexShader);
-		glAttachShader(ID, fragmentShader);
+		for (Shader* shader : in_shaders)
+		{
+			uint32 shaderID = shader->Get();
+			glAttachShader(m_program, shaderID);
+		}
+
 		// link the atteched shaders to the program
-		glLinkProgram(ID);
+		glLinkProgram(m_program);
 
 		// check for linking errors
 		int  success;
 		char infoLog[512];
-		glGetProgramiv(ID, GL_LINK_STATUS, &success);
+		glGetProgramiv(m_program, GL_LINK_STATUS, &success);
 		if (!success) {
-			glGetProgramInfoLog(ID, 512, 0, infoLog);
+			glGetProgramInfoLog(m_program, 512, 0, infoLog);
 			std::cout << "ERROR: Shader program linking failed.\n" << infoLog << "\n";
 		}
 
-		// if we dont detach them they wont be deleted until 
-		// no program shader is using them
-		glDetachShader(ID, vertexShader);
-		glDetachShader(ID, fragmentShader);
-		// if we dont use them in other shader program
-		// we dont need the shaders once we've linked them
-		glDeleteShader(vertexShader);
-		glDeleteShader(fragmentShader);
+		// detach the shaders to the program
+		for (auto shader : in_shaders)
+			glDetachShader(m_program, shader->Get());
 	}
 
 	// use/activate the shader
 	void bind()
 	{
-		glUseProgram(ID);
+		glUseProgram(m_program);
 	}
 
 	// utility uniform functions
@@ -128,7 +144,7 @@ public:
 private:
 	int getLocation(const char* name) const
 	{
-		return glGetUniformLocation(ID, name);
+		return glGetUniformLocation(m_program, name);
 	}
 };
 

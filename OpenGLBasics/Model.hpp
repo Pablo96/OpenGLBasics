@@ -20,7 +20,6 @@ class Mesh
 {
     uint32 VAO; // Vertex Array Object
     uint32 VBO; // Vertex Buffer Object
-    //uint32 IBO; // Per Instance attributes Buffer Object
     uint32 EBO; // Elements Buffer Object
 public:
     std::vector<Vertex> vertices;
@@ -65,7 +64,7 @@ public:
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uvCoord));
     }
 
-    void draw(Shader& shader)
+    void draw()
     {
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, (uint32)indices.size(), GL_UNSIGNED_INT, 0);
@@ -84,7 +83,7 @@ public:
         loadModel(path);
     }
 
-    void draw(Shader& shader)
+    void draw(Program& shader)
     {
         if (materials && (*materials).size() > 0)
             for (uint32 i = 0; i < meshes.size(); i++)
@@ -94,12 +93,12 @@ public:
                 if ((*materials)[i].specular)
                     (*materials)[i].specular->bind(1);
                 shader.setFloat("material.shininess", (*materials)[i].shininess);
-                meshes[i]->draw(shader);
+                meshes[i]->draw();
             }
         else
             for (uint32 i = 0; i < meshes.size(); i++)
             {
-                meshes[i]->draw(shader);
+                meshes[i]->draw();
             }
     }
 private:
