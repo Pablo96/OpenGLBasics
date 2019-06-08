@@ -6,13 +6,14 @@ in vec4 vPos;
 // OUT VARIABLES
 out vec4 color;
 
+uniform sampler2D diffuse;
 
 void main()
 {
     vec4 light_dir = normalize(vec4(-1, -1, -1, 0));
     vec4 normal = normalize(vNormal);
     float dif = dot(normal, -light_dir);
-    color = vec4(1, 0, 0, 1);
+    color = texture2D(diffuse, uvCoord);
     vec4 ambient = color * 0.2;
     color = color * dif + ambient;
 }

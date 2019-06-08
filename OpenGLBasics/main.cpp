@@ -68,6 +68,7 @@ int run(GLFWwindow* window)
 
 	std::vector<Shader*> shaders = { v_Shader, f_Shader };
 	Program shader(shaders);
+	shader.setInt("diffuse", 0);
 
 	// MODELS
     Texture tireTexD("res\\Textures\\Tire_df.png");
@@ -81,8 +82,8 @@ int run(GLFWwindow* window)
 	Material rimMat = { &rimTexD, &rimTexS, &rimTexN, 256.0f};
 
     std::vector<Material> materials = { tireMat, rimMat };
-    Model model("res\\Models\\wheel.mudm", &materials);
-
+    Mesh model("res\\Models\\wheel.mudm");
+	model.setMaterials(materials);
 	
     glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
     glm::mat4 PVmat = perspective * cam.GetViewMatrix();
