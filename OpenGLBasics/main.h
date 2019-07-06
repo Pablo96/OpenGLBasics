@@ -168,7 +168,7 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         // generate texture
-        GLenum channels = (nrChannels == 4) ? GL_SRGB_ALPHA : GL_SRGB;
+        GLenum channels = (nrChannels == 4) ? GL_RGBA8 : GL_RGB8;
 		GLenum channelsImage = (nrChannels == 4) ? GL_RGBA : GL_RGB;
         glTexImage2D(GL_TEXTURE_2D, 0, channels, width, height, 0, channelsImage, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);

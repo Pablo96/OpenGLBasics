@@ -53,14 +53,14 @@ int run(GLFWwindow* window)
 	glm::vec3 sunPos = sunDir * 1.8f;
 
     // SHADERS
-    Shader shader("res\\Shaders\\4.normal_mapping.vs", "res\\Shaders\\4.normal_mapping.fs");
+    Shader shader("res\\Shaders\\lit_normal.vert", "res\\Shaders\\lit_normal.frag");
     shader.bind();
     shader.setInt("diffuseMap", 0);
-	shader.setInt("normalMap", 1);
+	shader.setInt("normals_map", 1);
 	
 
 	// MODELS
-	Texture tireTexD("res\\Textures\\Tire_df_lt.png");
+	Texture tireTexD("res\\Textures\\Tire_df.png");
 	Texture tireTexN("res\\Models\\Wheel\\Tire_LP_nm.png");
     Material tireMat = { &tireTexD, nullptr, &tireTexN, 0.5f, 27.0f};
 
