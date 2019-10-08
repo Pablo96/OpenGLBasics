@@ -148,33 +148,7 @@ class Texture
 public:
     uint32 ID;
 
-    Texture(const char* fileName)
-    {
-        int width, height, nrChannels;
-        unsigned char* data = stbi_load(fileName, &width, &height, &nrChannels, 0);
-        if (!data)
-        {
-            std::cout << "Failed to load texture: "<< fileName << std::endl;
-            return;
-        }
-
-        glGenTextures(1, &ID);
-        glBindTexture(GL_TEXTURE_2D, ID);
-
-        // set the texture wrapping/filtering options (on the currently bound texture object)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        // generate texture
-        GLenum channels = (nrChannels == 4) ? GL_RGBA8 : GL_RGB8;
-		GLenum channelsImage = (nrChannels == 4) ? GL_RGBA : GL_RGB;
-        glTexImage2D(GL_TEXTURE_2D, 0, channels, width, height, 0, channelsImage, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-
-        stbi_image_free(data);
-    }
+	Texture() = default;
 
     void bind(const uint32 unit = 0) const
     {
@@ -183,14 +157,126 @@ public:
     }
 };
 
+class Texture2D : public Texture
+{
+public:
+	Texture2D(const std::string& fileName, int width = 0, int height = 0)
+	{
+		unsigned char* data = nullptr;
+		int nrChannels;
+		GLenum channels, channelsImage;
+
+		if (fileName != "")
+		{
+			data = stbi_load(fileName.c_str(), &width, &height, &nrChannels, 0);
+			if (!data)
+			{
+				std::cout << "Failed to load texture: " << fileName << std::endl;
+				return;
+			}
+			channels = (nrChannels == 4) ? GL_RGBA8 : GL_RGB8;
+			channelsImage = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+		}
+		else
+			channelsImage = channels = GL_DEPTH_COMPONENT;
+
+		glGenTextures(1, &ID);
+		glBindTexture(GL_TEXTURE_2D, ID);
+
+		// set the texture wrapping/filtering options (on the currently bound texture object)
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		// generate texture
+		glTexImage2D(GL_TEXTURE_2D, 0, channels, width, height, 0, channelsImage, GL_UNSIGNED_BYTE, data);
+
+		if (data)
+		{
+			glGenerateMipmap(GL_TEXTURE_2D);
+			stbi_image_free(data);
+		}
+	}
+};
+
+
+class Cubemap : public Texture
+{
+public:
+	Cubemap(const std::vector<std::string>& textures_faces)
+	{
+		glGenTextures(1, &ID);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, ID);
+
+		int width, height, nrChannels;
+		unsigned char* data;
+		for (GLuint i = 0; i < textures_faces.size(); i++)
+		{
+			data = stbi_load(textures_faces[i].c_str(), &width, &height, &nrChannels, 0);
+			if (!data)
+			{
+				std::cout << "Failed to load texture: " << textures_faces[i].c_str() << std::endl;
+				continue;
+			}
+
+			glTexImage2D(
+				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+				0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+			);
+			stbi_image_free(data);
+		}
+
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	}
+};
+
 
 struct Material
 {
     Texture* diffuse;
-	Texture* specular;
 	Texture* normal;
     float intensity;
 	float shininess;
+};
+
+class Framebuffer
+{
+	unsigned int fbo;
+public:
+	Framebuffer(const Texture2D* texture)
+	{
+		if (texture == nullptr)
+		{
+			std::cout << "TEXTURE IS NULL!" << std::endl;
+			__debugbreak;
+			return;
+		}
+
+		glGenFramebuffers(1, &fbo);
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+		GLenum attachment = GL_DEPTH_ATTACHMENT;
+		glDrawBuffer(GL_NONE);
+		glReadBuffer(GL_NONE);
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, texture->ID, 0);
+
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+			std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+	}
+	void Bind()
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	}
+	static void Default()
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
 };
 
 

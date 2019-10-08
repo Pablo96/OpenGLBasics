@@ -73,7 +73,7 @@ public:
 		glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, bitangent));
     }
 
-    void draw(Shader& shader)
+    void draw()
     {
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, (uint32)indices.size(), GL_UNSIGNED_INT, 0);
@@ -92,7 +92,7 @@ public:
         loadModel(path);
     }
 
-    void draw(Shader& shader)
+    void draw()
     {
         if (materials && (*materials).size() > 0)
             for (uint32 i = 0; i < meshes.size(); i++)
@@ -101,12 +101,12 @@ public:
                     (*materials)[i].diffuse->bind(0);
 				if ((*materials)[i].normal)
 					(*materials)[i].normal->bind(1);
-                meshes[i].draw(shader);
+                meshes[i].draw();
             }
         else
             for (uint32 i = 0; i < meshes.size(); i++)
             {
-                meshes[i].draw(shader);
+                meshes[i].draw();
             }
     }
 private:

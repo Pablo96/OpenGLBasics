@@ -4,8 +4,8 @@
 #include <math.h>
 
 #define BUFFER_SIZE 1024
-#define WIDTH 800
-#define HEIGHT 450
+#define WIDTH 1280
+#define HEIGHT 720
 
 glm::vec3 camPos (2.0f, 0.0f, 2.0f);
 Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 231.499954f, 0.0f);
@@ -57,95 +57,123 @@ int run(GLFWwindow* window)
     shader.bind();
     shader.setInt("diffuseMap", 0);
 	shader.setInt("normals_map", 1);
-	
 
-	// MODELS
-	Texture tireTexD("res\\Textures\\Tire_df.png");
-	Texture tireTexN("res\\Models\\Wheel\\Tire_LP_nm.png");
-    Material tireMat = { &tireTexD, nullptr, &tireTexN, 0.5f, 27.0f};
+	Shader skyShader("res\\Shaders\\skybox.vert","res\\Shaders\\skybox.frag");
+	skyShader.bind();
+	skyShader.setInt("diffuse", 0);
 
-	Texture rimTexD("res\\Textures\\Rim_df.png");
-	Texture rimTexN("res\\Models\\Wheel\\Rim_LP_nm.png");
-	Material rimMat = { &rimTexD, nullptr, &rimTexN, 1.5f, 256.0f};
+	Shader vfxShader("res\\Shaders\\vfx.vert","res\\Shaders\\vfx.frag");
+	vfxShader.bind();
+	vfxShader.setInt("screen", 0);
 
+	// TEXTURES
+	Texture2D* shadowTexture = new Texture2D("", 1024, 1024);
+	Texture2D* screenTexture = new Texture2D("", WIDTH, HEIGHT);
+	Texture2D* tireTexD =  new Texture2D("res\\Textures\\Tire_df.png");
+	Texture2D* tireTexN =  new Texture2D("res\\Models\\Wheel\\Tire_LP_nm.png");
+	Texture2D* rimTexD =  new Texture2D("res\\Textures\\Rim_df.png");
+	Texture2D* rimTexN =  new Texture2D("res\\Models\\Wheel\\Rim_LP_nm.png");
+	Texture2D* floorTexD =  new Texture2D("res\\Textures\\RedBrick\\brick_df.png");
+	Texture2D* floorTexN =  new Texture2D("res\\Textures\\RedBrick\\brick_nm.png");
+	Cubemap* skyTex = new Cubemap({
+			"res/textures/cubemaps/hw_alps/alps_rt.tga",
+			"res/textures/cubemaps/hw_alps/alps_lf.tga",
+			"res/textures/cubemaps/hw_alps/alps_up.tga",
+			"res/textures/cubemaps/hw_alps/alps_dn.tga",
+			"res/textures/cubemaps/hw_alps/alps_ft.tga",
+			"res/textures/cubemaps/hw_alps/alps_bk.tga",
+		});
+
+	// MATERIALS
+	Material tireMat = { tireTexD, tireTexN, 0.5f, 27.0f};
     std::vector<Material> tireMats= { tireMat };
-    Model tireModel("res\\Models\\Wheel\\Tire_LP.obj", &tireMats);
+	Material rimMat = { rimTexD, rimTexN, 1.5f, 256.0f};
 	std::vector<Material> rimMats = { rimMat };
-	Model rimModel("res\\Models\\Wheel\\Rim_LP.obj", &rimMats);
-
-	Texture floorTexD("res\\Textures\\RedBrick\\brick_df.png");
-	Texture floorTexN("res\\Textures\\RedBrick\\brick_nm.png");
-	Material floorMaterial = { &floorTexD, nullptr, &floorTexN, 1.0f, 12.0f};
-	
+	Material floorMaterial = { floorTexD, floorTexN, 0.0f, 12.0f};
 	std::vector<Material> floorMaterials = { floorMaterial };
-	Model floor("res\\Models\\plane.obj", &floorMaterials);
-    
-	Texture sunD("res\\Textures\\white.bmp");
-	Material sunMaterial = { &sunD, nullptr, nullptr, 1.0f, 1.0f };
-
-	std::vector<Material> sunMaterials = { sunMaterial };
-	Model sunModel("res\\Models\\sphere_lp.obj", &sunMaterials);
-
-	// when instanced is 2 drawcalls 1 per mesh (wheel)
-    glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
-    glm::mat4 PVmat = perspective * cam.GetViewMatrix();
+	Material skyMaterial = { skyTex, nullptr, 0, 0 };
+	std::vector<Material> skyMaterials = { skyMaterial };
 	
-	glm::mat4 floorMat = glm::translate(glm::vec3(0, -0.8, 0))
-		* glm::scale(glm::vec3(10.0f, 10.0f, 10.0f));
+	// MODELS
+    Model tireModel("res\\Models\\Wheel\\Tire_LP.obj", &tireMats);
+	Model rimModel("res\\Models\\Wheel\\Rim_LP.obj", &rimMats);
+	Model floor("res\\Models\\plane.obj", &floorMaterials);
+	Model sky("res\\Models\\cube.obj", &skyMaterials);
+	Model screenPlane("res\\Models\\plane.obj", nullptr);
+
+	// TRANSFORMS
+	glm::mat4 orthographic = glm::ortho(-10, 10, -10, 10, 2, 10);
+    glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
+	
+	glm::mat4 floorMat = glm::translate(glm::vec3(0, -0.8, 0)) * glm::scale(glm::vec3(10.0f, 10.0f, 10.0f));
 	glm::mat3 floorNMat = glm::transpose(glm::inverse(glm::mat3(floorMat)));
     
 	glm::mat4 modelMat = glm::rotate(glm::radians(0.0f), glm::vec3(0, 1, 0));
     glm::mat3 normalMat = glm::transpose(glm::inverse(glm::mat3(modelMat)));
 	
-	glm::mat4 sunMat = glm::translate(sunPos * 5.0f) * glm::scale(glm::vec3(0.2f));
-	
 	glm::mat4 transform;
 	float angle = 0.0f;
 
-	glClearColor(0.2f, 0.48f, 1.0f, 1.0f);
 	
 	// set shader's uniforms
 	shader.bind();
 	shader.setVec3f("lightPos", sunPos.x, sunPos.y, sunPos.z);
 	shader.setMat4f("projection", perspective);
     
-	
-	
-	
+	// FRAMEBUFFERS
+	Framebuffer shadowMap(shadowTexture);
+	Framebuffer screenVFX(screenTexture);
+
 	std::cout.flush();
+	
+	glClearColor(0.2f, 0.48f, 1.0f, 1.0f);
     while (!glfwWindowShouldClose(window))
     {
-        // TIME
+        // FPS
         float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         std::cout << deltaTime * 1000 << "ms" << std::endl;
-        // Logic
-		angle += .5f;
+        
+		// LOGIC
+		angle += 0.5f;
 		angle = (angle > 360.0f) ? 0.0f : angle;
         camPos = cam.Position;
 		modelMat = glm::rotate(glm::radians(angle), glm::vec3(1, 0, 0));
 		
+		// SHADOW MAP
+		shadowMap.Bind();
 
-        // RENDER CALLS OR CODE
+
+
+        // RENDER SCENE
+		Framebuffer::Default();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		shader.setVec3f("viewPos", camPos.x, camPos.y, camPos.z);
 		shader.setMat4f("view", cam.GetViewMatrix());
 
-		shader.setMat4f("model", sunMat);
-		sunModel.draw(shader);
-
 		shader.setMat4f("model", modelMat);
-		tireModel.draw(shader);
-		rimModel.draw(shader);
+		tireModel.draw();
+		rimModel.draw();
 
 		shader.setMat4f("model", floorMat);
-		floor.draw(shader);
+		floor.draw();
 		
-        // Render the frame
+		//skyShader.bind();
+		//skyShader.setMat4f("pv_transform", perspective * cam.GetViewMatrix());
+		//sky.draw();
+
+		// VFX
+		//vfxShader.bind();
+		//screenTexture->bind();
+		//screenPlane.draw();
+        
+		
+		// PRESENT THE FRAME
         glfwSwapBuffers(window);
-        // get the events
+
+		// get the events
         glfwPollEvents();
         processInput(window);
     }
