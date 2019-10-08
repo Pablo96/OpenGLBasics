@@ -68,23 +68,21 @@ int run(GLFWwindow* window)
 	Texture rimTexN("res\\Models\\Wheel\\Rim_LP_nm.png");
 	Material rimMat = { &rimTexD, nullptr, &rimTexN, 1.5f, 256.0f};
 
-    std::vector<Material> tireMats= { tireMat };
-    Model tireModel("res\\Models\\Wheel\\Tire_LP.obj", &tireMats);
-	std::vector<Material> rimMats = { rimMat };
-	Model rimModel("res\\Models\\Wheel\\Rim_LP.obj", &rimMats);
+    std::vector<Material> wheelMats= { tireMat, rimMat };
+    Model wheelModel("res\\Models\\Wheel\\wheel2.mudm", &wheelMats);
 
 	Texture floorTexD("res\\Textures\\RedBrick\\brick_df.png");
 	Texture floorTexN("res\\Textures\\RedBrick\\brick_nm.png");
 	Material floorMaterial = { &floorTexD, nullptr, &floorTexN, 1.0f, 12.0f};
 	
 	std::vector<Material> floorMaterials = { floorMaterial };
-	Model floor("res\\Models\\plane.obj", &floorMaterials);
+	Model floor("res\\Models\\plane.mudm", &floorMaterials);
     
 	Texture sunD("res\\Textures\\white.bmp");
 	Material sunMaterial = { &sunD, nullptr, nullptr, 1.0f, 1.0f };
 
 	std::vector<Material> sunMaterials = { sunMaterial };
-	Model sunModel("res\\Models\\sphere_lp.obj", &sunMaterials);
+	Model sunModel("res\\Models\\sphere_lp.mudm", &sunMaterials);
 
 	// when instanced is 2 drawcalls 1 per mesh (wheel)
     glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
@@ -137,8 +135,7 @@ int run(GLFWwindow* window)
 		sunModel.draw(shader);
 
 		shader.setMat4f("model", modelMat);
-		tireModel.draw(shader);
-		rimModel.draw(shader);
+		wheelModel.draw(shader);
 
 		shader.setMat4f("model", floorMat);
 		floor.draw(shader);
