@@ -3,9 +3,7 @@
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <GLM/glm.hpp>
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
+#include "mud_importer.hpp"
 #include <vector>
 
 
@@ -112,86 +110,48 @@ public:
 private:
     void loadModel(const std::string& path)
     {
-        Assimp::Importer import;
-        const aiScene *scene = import.ReadFile(path,
-			aiProcess_Triangulate	| 
-			aiProcess_FlipUVs		|
-			aiProcess_CalcTangentSpace);
+		MUDLoader::Model* model = nullptr;
+		MUDLoader::LoadASCII(path.c_str(), &model);
 
-        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
-        {
-            std::cout << "ERROR::ASSIMP::" << import.GetErrorString() << std::endl;
-            return;
-        }
-        directory = path.substr(0, path.find_last_of('/'));
+		if (model == nullptr) return;
 
-        processNode(scene->mRootNode, scene);
-    }
-    void processNode(aiNode *node, const aiScene *scene)
-    {
-        // process all the node's meshes (if any)
-        for (unsigned int i = 0; i < node->mNumMeshes; i++)
-        {
-            aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
-            meshes.push_back(processMesh(mesh, scene));
-        }
-        // then do the same for each of its children
-        for (unsigned int i = 0; i < node->mNumChildren; i++)
-        {
-            processNode(node->mChildren[i], scene);
-        }
-    }
-    Mesh processMesh(aiMesh *mesh, const aiScene *scene)
-    {
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
 
-        for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-        {
-            Vertex vertex;
-            // process vertex positions, normals and texture coordinates
-            glm::vec3 vector;
-            vector.x = mesh->mVertices[i].x;
-            vector.y = mesh->mVertices[i].y;
-            vector.z = mesh->mVertices[i].z;
-            vertex.pos = vector;
+		for (auto& mesh : model->meshes)
+		{
+			for (auto& mud_vertex : mesh.vertices)
+			{
+				Vertex vertex;
 
-            vector.x = mesh->mNormals[i].x;
-            vector.y = mesh->mNormals[i].y;
-            vector.z = mesh->mNormals[i].z;
-            vertex.normal = vector;
+				vertex.pos = mud_vertex.pos;
 
-			vector.x = mesh->mTangents[i].x;
-			vector.y = mesh->mTangents[i].y;
-			vector.z = mesh->mTangents[i].z;
-			vertex.tangent = vector;
+				vertex.normal = mud_vertex.normal;
 
-			vector.x = mesh->mBitangents[i].x;
-			vector.y = mesh->mBitangents[i].y;
-			vector.z = mesh->mBitangents[i].z;
-			vertex.bitangent = vector;
+				vertex.uvCoord = mud_vertex.uvCoord;
 
-            if (mesh->mTextureCoords[0]) // does the mesh contain texture coordinates?
-            {
-                glm::vec2 vec;
-                vec.x = mesh->mTextureCoords[0][i].x;
-                vec.y = mesh->mTextureCoords[0][i].y;
-                vertex.uvCoord = vec;
-            }
-            else
-                vertex.uvCoord = glm::vec2(0.0f, 0.0f);
-            vertices.push_back(vertex);
-        }
+				/*
+				vector.x = mesh->mTangents[i].x;
+				vector.y = mesh->mTangents[i].y;
+				vector.z = mesh->mTangents[i].z;
+				vertex.tangent = vector;
 
-        // process indices
-        for (unsigned int i = 0; i < mesh->mNumFaces; i++)
-        {
-            aiFace face = mesh->mFaces[i];
-            for (unsigned int j = 0; j < face.mNumIndices; j++)
-                indices.push_back(face.mIndices[j]);
-        }
+				vector.x = mesh->mBitangents[i].x;
+				vector.y = mesh->mBitangents[i].y;
+				vector.z = mesh->mBitangents[i].z;
+				vertex.bitangent = vector;
+				*/
 
-        return Mesh(vertices, indices);
+
+				vertices.push_back(vertex);
+			}
+
+			// process indices
+			for (auto& index : mesh.indices)
+				indices.push_back(index);
+
+			meshes.push_back(Mesh(vertices, indices));
+		}
     }
 };
 
@@ -411,82 +371,45 @@ public:
 private:
     void loadModel(const std::string& path)
     {
-        Assimp::Importer import;
-        const aiScene *scene = import.ReadFile(path, 
-			  aiProcess_Triangulate
-			| aiProcess_CalcTangentSpace
-			| aiProcess_FlipUVs
-			| aiProcess_GenSmoothNormals
-		);
+		MUDLoader::Model* model;
+		MUDLoader::LoadASCII(path.c_str(), &model);
 
-        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
-        {
-            std::cout << "ERROR::ASSIMP::" << import.GetErrorString() << std::endl;
-            return;
-        }
-        directory = path.substr(0, path.find_last_of('/'));
+		std::vector<Vertex> vertices;
+		std::vector<unsigned int> indices;
 
-        processNode(scene->mRootNode, scene);
-    }
-    void processNode(aiNode *node, const aiScene *scene)
-    {
-        // process all the node's meshes (if any)
-        for (unsigned int i = 0; i < node->mNumMeshes; i++)
-        {
-            aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
-            meshes.push_back(processMesh(mesh, scene));
-        }
-        // then do the same for each of its children
-        for (unsigned int i = 0; i < node->mNumChildren; i++)
-        {
-            processNode(node->mChildren[i], scene);
-        }
-    }
-    MeshInstanced processMesh(aiMesh *mesh, const aiScene *scene)
-    {
-        std::vector<Vertex> vertices;
-        std::vector<unsigned int> indices;
+		for (auto& mesh : model->meshes)
+		{
+			for (auto& mud_vertex : mesh.vertices)
+			{
+				Vertex vertex;
 
-        for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-        {
-            Vertex vertex;
-            // process vertex positions, normals and texture coordinates
-            glm::vec3 vector;
-            vector.x = mesh->mVertices[i].x;
-            vector.y = mesh->mVertices[i].y;
-            vector.z = mesh->mVertices[i].z;
-            vertex.pos = vector;
+				vertex.pos = mud_vertex.pos;
 
-            vector.x = mesh->mNormals[i].x;
-            vector.y = mesh->mNormals[i].y;
-            vector.z = mesh->mNormals[i].z;
-            vertex.normal = vector;
+				vertex.normal = mud_vertex.normal;
 
-			vector.x = mesh->mTangents[i].x;
-			vector.y = mesh->mTangents[i].y;
-			vector.z = mesh->mTangents[i].z;
-			vertex.tangent = vector;
+				vertex.uvCoord = mud_vertex.uvCoord;
 
-            if (mesh->mTextureCoords[0]) // does the mesh contain texture coordinates?
-            {
-                glm::vec2 vec;
-                vec.x = mesh->mTextureCoords[0][i].x;
-                vec.y = mesh->mTextureCoords[0][i].y;
-                vertex.uvCoord = vec;
-            }
-            else
-                vertex.uvCoord = glm::vec2(0.0f, 0.0f);
-            vertices.push_back(vertex);
-        }
+				/*
+				vector.x = mesh->mTangents[i].x;
+				vector.y = mesh->mTangents[i].y;
+				vector.z = mesh->mTangents[i].z;
+				vertex.tangent = vector;
 
-        // process indices
-        for (unsigned int i = 0; i < mesh->mNumFaces; i++)
-        {
-            aiFace face = mesh->mFaces[i];
-            for (unsigned int j = 0; j < face.mNumIndices; j++)
-                indices.push_back(face.mIndices[j]);
-        }
+				vector.x = mesh->mBitangents[i].x;
+				vector.y = mesh->mBitangents[i].y;
+				vector.z = mesh->mBitangents[i].z;
+				vertex.bitangent = vector;
+				*/
 
-        return MeshInstanced(vertices, indices);
+
+				vertices.push_back(vertex);
+			}
+
+			// process indices
+			for (auto& index : mesh.indices)
+				indices.push_back(index);
+
+			meshes.push_back(MeshInstanced(vertices, indices));
+		}
     }
 };

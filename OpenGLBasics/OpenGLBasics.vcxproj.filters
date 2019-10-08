@@ -10,6 +10,12 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="mud_importer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="tinyxml2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -18,5 +24,7 @@
     <ClInclude Include="Model.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="mud_importer.hpp" />
+    <ClInclude Include="tinyxml2.h" />
   </ItemGroup>
 </Project>
