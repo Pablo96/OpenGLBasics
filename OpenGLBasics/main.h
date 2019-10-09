@@ -160,10 +160,12 @@ public:
 class Texture2D : public Texture
 {
 public:
-	Texture2D(const std::string& fileName, int width = 0, int height = 0)
+	int height, width;
+
+	Texture2D(const std::string& fileName, const bool repeat = true, int in_width = 0, int in_height = 0, const bool depthTexture = false)
 	{
 		unsigned char* data = nullptr;
-		int nrChannels;
+		int nrChannels = 3;
 		GLenum channels, channelsImage;
 
 		if (fileName != "")
@@ -174,28 +176,46 @@ public:
 				std::cout << "Failed to load texture: " << fileName << std::endl;
 				return;
 			}
-			channels = (nrChannels == 4) ? GL_RGBA8 : GL_RGB8;
-			channelsImage = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+			
 		}
 		else
-			channelsImage = channels = GL_DEPTH_COMPONENT;
+		{
+			width = in_width;
+			height = in_height;
+		}
 
 		glGenTextures(1, &ID);
 		glBindTexture(GL_TEXTURE_2D, ID);
 
 		// set the texture wrapping/filtering options (on the currently bound texture object)
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		if (repeat)
+		{
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		}
+		else
+		{
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		}
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-		// generate texture
-		glTexImage2D(GL_TEXTURE_2D, 0, channels, width, height, 0, channelsImage, GL_UNSIGNED_BYTE, data);
-
+		
 		if (data)
 		{
+			channels = (nrChannels == 4) ? GL_RGBA8 : GL_RGB8;
+			channelsImage = (nrChannels == 4) ? GL_RGBA : GL_RGB;
+			glTexImage2D(GL_TEXTURE_2D, 0, channels, width, height, 0, channelsImage, GL_UNSIGNED_BYTE, data);
 			glGenerateMipmap(GL_TEXTURE_2D);
 			stbi_image_free(data);
+		}
+		else
+		{
+			if (depthTexture)
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+			else
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
 		}
 	}
 };
@@ -248,7 +268,7 @@ class Framebuffer
 {
 	unsigned int fbo;
 public:
-	Framebuffer(const Texture2D* texture)
+	Framebuffer(const Texture2D* texture, const Texture2D* texture2, const bool depthBuffer = false)
 	{
 		if (texture == nullptr)
 		{
@@ -260,11 +280,25 @@ public:
 		glGenFramebuffers(1, &fbo);
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-		GLenum attachment = GL_DEPTH_ATTACHMENT;
-		glDrawBuffer(GL_NONE);
-		glReadBuffer(GL_NONE);
+		if (depthBuffer)
+		{
+			glDrawBuffer(GL_NONE);
+			glReadBuffer(GL_NONE);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, texture->ID, 0);
+		}
+		else
+		{
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture->ID, 0);
 
-		glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, texture->ID, 0);
+			unsigned int rbo;
+			glGenRenderbuffers(1, &rbo);
+			glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, texture->width, texture->height);
+			glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+		}
+
 
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 			std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;

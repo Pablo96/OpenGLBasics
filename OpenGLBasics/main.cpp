@@ -6,6 +6,8 @@
 #define BUFFER_SIZE 1024
 #define WIDTH 1280
 #define HEIGHT 720
+#define SHADOW_RES 1024
+#define SHADOW_SIZE 1.0f
 
 glm::vec3 camPos (2.0f, 0.0f, 2.0f);
 Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 231.499954f, 0.0f);
@@ -49,14 +51,15 @@ int main(int argc, char** argv)
 int run(GLFWwindow* window)
 {
 
-    glm::vec3 sunDir(1, 1, 1);
-	glm::vec3 sunPos = sunDir * 1.8f;
+    glm::vec3 sunDir = glm::vec3(1, 1, 1);
+	glm::vec3 sunPos = sunDir * 4.0f;
 
     // SHADERS
     Shader shader("res\\Shaders\\lit_normal.vert", "res\\Shaders\\lit_normal.frag");
     shader.bind();
     shader.setInt("diffuseMap", 0);
 	shader.setInt("normals_map", 1);
+	shader.setInt("shadow_map", 2);
 
 	Shader skyShader("res\\Shaders\\skybox.vert","res\\Shaders\\skybox.frag");
 	skyShader.bind();
@@ -66,9 +69,10 @@ int run(GLFWwindow* window)
 	vfxShader.bind();
 	vfxShader.setInt("screen", 0);
 
+	Shader shadowMapShader("res\\Shaders\\shadow_mapping.vert", "res\\Shaders\\shadow_mapping.frag");
 	// TEXTURES
-	Texture2D* shadowTexture = new Texture2D("", 1024, 1024);
-	Texture2D* screenTexture = new Texture2D("", WIDTH, HEIGHT);
+	Texture2D* shadowTexture = new Texture2D("", false, SHADOW_RES, SHADOW_RES, true);
+	Texture2D* screenTexture = new Texture2D("", false, WIDTH, HEIGHT);
 	Texture2D* tireTexD =  new Texture2D("res\\Textures\\Tire_df.png");
 	Texture2D* tireTexN =  new Texture2D("res\\Models\\Wheel\\Tire_LP_nm.png");
 	Texture2D* rimTexD =  new Texture2D("res\\Textures\\Rim_df.png");
@@ -99,10 +103,10 @@ int run(GLFWwindow* window)
 	Model rimModel("res\\Models\\Wheel\\Rim_LP.obj", &rimMats);
 	Model floor("res\\Models\\plane.obj", &floorMaterials);
 	Model sky("res\\Models\\cube.obj", &skyMaterials);
-	Model screenPlane("res\\Models\\plane.obj", nullptr);
+	Model screenPlane("res\\Models\\planeZ.obj", nullptr);
 
 	// TRANSFORMS
-	glm::mat4 orthographic = glm::ortho(-10, 10, -10, 10, 2, 10);
+	glm::mat4 orthographic = glm::ortho(-SHADOW_SIZE, SHADOW_SIZE, -SHADOW_SIZE, SHADOW_SIZE, 5.0f, 19.0f);
     glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
 	
 	glm::mat4 floorMat = glm::translate(glm::vec3(0, -0.8, 0)) * glm::scale(glm::vec3(10.0f, 10.0f, 10.0f));
@@ -111,18 +115,27 @@ int run(GLFWwindow* window)
 	glm::mat4 modelMat = glm::rotate(glm::radians(0.0f), glm::vec3(0, 1, 0));
     glm::mat3 normalMat = glm::transpose(glm::inverse(glm::mat3(modelMat)));
 	
+	glm::mat4 sunView = glm::lookAt(sunPos, glm::vec3(0, 0, 0),	glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::mat4 lightSpace_mat = orthographic * sunView;
 	glm::mat4 transform;
 	float angle = 0.0f;
 
 	
 	// set shader's uniforms
+	shadowMapShader.bind();
+	shadowMapShader.setMat4f("lightspace_mat", lightSpace_mat);
+
 	shader.bind();
+	shader.setMat4f("lightspace_mat", lightSpace_mat);
 	shader.setVec3f("lightPos", sunPos.x, sunPos.y, sunPos.z);
-	shader.setMat4f("projection", perspective);
     
 	// FRAMEBUFFERS
-	Framebuffer shadowMap(shadowTexture);
-	Framebuffer screenVFX(screenTexture);
+	Framebuffer shadowMap(shadowTexture, nullptr, true);
+	Framebuffer screenVFX(screenTexture, nullptr);
+
+	unsigned int depthMapFBO;
+	glGenFramebuffers(1, &depthMapFBO);
+
 
 	std::cout.flush();
 	
@@ -133,7 +146,6 @@ int run(GLFWwindow* window)
         float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-        std::cout << deltaTime * 1000 << "ms" << std::endl;
         
 		// LOGIC
 		angle += 0.5f;
@@ -143,15 +155,33 @@ int run(GLFWwindow* window)
 		
 		// SHADOW MAP
 		shadowMap.Bind();
+		glClear(GL_DEPTH_BUFFER_BIT);
+		glViewport(0, 0, SHADOW_RES, SHADOW_RES);
+		glCullFace(GL_FRONT);
 
 
+		shadowMapShader.bind();
+		shadowMapShader.setMat4f("model", modelMat);
+
+		tireModel.draw();
+		rimModel.draw();
 
         // RENDER SCENE
-		Framebuffer::Default();
+		//Framebuffer::Default();
+		screenVFX.Bind();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+		glViewport(0, 0, WIDTH, HEIGHT);
+		glCullFace(GL_BACK);
+		
+		
+		auto pv_mat = perspective * cam.GetViewMatrix();
+		
+		
+		shader.bind();
 		shader.setVec3f("viewPos", camPos.x, camPos.y, camPos.z);
-		shader.setMat4f("view", cam.GetViewMatrix());
+		shader.setMat4f("pv_mat", pv_mat);
+		
+		shadowTexture->bind(2);
 
 		shader.setMat4f("model", modelMat);
 		tireModel.draw();
@@ -160,14 +190,16 @@ int run(GLFWwindow* window)
 		shader.setMat4f("model", floorMat);
 		floor.draw();
 		
-		//skyShader.bind();
-		//skyShader.setMat4f("pv_transform", perspective * cam.GetViewMatrix());
-		//sky.draw();
+		skyShader.bind();
+		skyShader.setMat4f("pv_transform", pv_mat);
+		sky.draw();
 
 		// VFX
-		//vfxShader.bind();
-		//screenTexture->bind();
-		//screenPlane.draw();
+		Framebuffer::Default();
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		vfxShader.bind();
+		screenTexture->bind();
+		screenPlane.draw();
         
 		
 		// PRESENT THE FRAME
