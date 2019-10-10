@@ -268,12 +268,12 @@ class Framebuffer
 {
 	unsigned int fbo;
 public:
-	Framebuffer(const Texture2D* texture, const Texture2D* texture2, const bool depthBuffer = false)
+	Framebuffer(const Texture2D* texture, const Texture2D* texture2 = nullptr, const bool depthBuffer = false)
 	{
 		if (texture == nullptr)
 		{
 			std::cout << "TEXTURE IS NULL!" << std::endl;
-			__debugbreak;
+			__debugbreak();
 			return;
 		}
 
@@ -289,14 +289,22 @@ public:
 		else
 		{
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture->ID, 0);
+			if (texture2 != nullptr)
+			{
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, texture2->ID, 0);
+				
+				unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+				glDrawBuffers(2, attachments);
 
-			unsigned int rbo;
-			glGenRenderbuffers(1, &rbo);
-			glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, texture->width, texture->height);
-			glBindRenderbuffer(GL_RENDERBUFFER, 0);
+				unsigned int rbo;
+				glGenRenderbuffers(1, &rbo);
+				glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+				glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, texture->width, texture->height);
+				glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
-			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+				glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+			}
+
 		}
 
 

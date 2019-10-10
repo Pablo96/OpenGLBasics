@@ -61,6 +61,10 @@ int run(GLFWwindow* window)
 	shader.setInt("normals_map", 1);
 	shader.setInt("shadow_map", 2);
 
+	Shader emitShader("res\\Shaders\\unlit.vert", "res\\Shaders\\unlit.frag");
+	emitShader.bind();
+	emitShader.setFloat("intensity", 2.0f);
+
 	Shader skyShader("res\\Shaders\\skybox.vert","res\\Shaders\\skybox.frag");
 	skyShader.bind();
 	skyShader.setInt("diffuse", 0);
@@ -68,11 +72,19 @@ int run(GLFWwindow* window)
 	Shader vfxShader("res\\Shaders\\vfx.vert","res\\Shaders\\vfx.frag");
 	vfxShader.bind();
 	vfxShader.setInt("screen", 0);
+	vfxShader.setInt("bloomScreen", 1);
+
+	Shader blurShader("res\\Shaders\\blur.vert", "res\\Shaders\\blur.frag");
+	blurShader.bind();
+	blurShader.setInt("in_image", 0);
 
 	Shader shadowMapShader("res\\Shaders\\shadow_mapping.vert", "res\\Shaders\\shadow_mapping.frag");
 	// TEXTURES
 	Texture2D* shadowTexture = new Texture2D("", false, SHADOW_RES, SHADOW_RES, true);
 	Texture2D* screenTexture = new Texture2D("", false, WIDTH, HEIGHT);
+	Texture2D* bloomTexture = new Texture2D("", false, WIDTH, HEIGHT);
+	Texture2D* blurHTexture = new Texture2D("", false, WIDTH, HEIGHT);
+	Texture2D* blurVTexture = new Texture2D("", false, WIDTH, HEIGHT);
 	Texture2D* tireTexD =  new Texture2D("res\\Textures\\Tire_df.png");
 	Texture2D* tireTexN =  new Texture2D("res\\Models\\Wheel\\Tire_LP_nm.png");
 	Texture2D* rimTexD =  new Texture2D("res\\Textures\\Rim_df.png");
@@ -104,14 +116,17 @@ int run(GLFWwindow* window)
 	Model floor("res\\Models\\plane.obj", &floorMaterials);
 	Model sky("res\\Models\\cube.obj", &skyMaterials);
 	Model screenPlane("res\\Models\\planeZ.obj", nullptr);
+	Model sphere("res\\Models\\sphere_lp.obj", nullptr);
 
 	// TRANSFORMS
 	glm::mat4 orthographic = glm::ortho(-SHADOW_SIZE, SHADOW_SIZE, -SHADOW_SIZE, SHADOW_SIZE, 5.0f, 19.0f);
     glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
 	
-	glm::mat4 floorMat = glm::translate(glm::vec3(0, -0.8, 0)) * glm::scale(glm::vec3(10.0f, 10.0f, 10.0f));
+	glm::mat4 floorMat = glm::translate(glm::vec3(0, -0.8f, 0)) * glm::scale(glm::vec3(1.0f, 1.0f, 1.0f) * 10.0f);
 	glm::mat3 floorNMat = glm::transpose(glm::inverse(glm::mat3(floorMat)));
     
+	glm::mat4 sphere_mat = glm::translate(glm::vec3(2, 1, 0)) * glm::scale(glm::vec3(1.0f, 1.0f, 1.0f) * 0.5f);
+
 	glm::mat4 modelMat = glm::rotate(glm::radians(0.0f), glm::vec3(0, 1, 0));
     glm::mat3 normalMat = glm::transpose(glm::inverse(glm::mat3(modelMat)));
 	
@@ -119,8 +134,10 @@ int run(GLFWwindow* window)
 	glm::mat4 lightSpace_mat = orthographic * sunView;
 	glm::mat4 transform;
 	float angle = 0.0f;
+	bool horizontal = true;
+	bool first_iteration = true;
+	int amount = 20;
 
-	
 	// set shader's uniforms
 	shadowMapShader.bind();
 	shadowMapShader.setMat4f("lightspace_mat", lightSpace_mat);
@@ -131,15 +148,15 @@ int run(GLFWwindow* window)
     
 	// FRAMEBUFFERS
 	Framebuffer shadowMap(shadowTexture, nullptr, true);
-	Framebuffer screenVFX(screenTexture, nullptr);
+	Framebuffer screenVFX(screenTexture, bloomTexture);
+	Framebuffer blurVertical(blurVTexture);
+	Framebuffer blurHorizontal(blurHTexture);
 
-	unsigned int depthMapFBO;
-	glGenFramebuffers(1, &depthMapFBO);
-
+	Texture* ping_pong[] = { blurHTexture, blurVTexture };
+	Framebuffer* ping_pongFrame[] = { &blurHorizontal, &blurVertical };
 
 	std::cout.flush();
 	
-	glClearColor(0.2f, 0.48f, 1.0f, 1.0f);
     while (!glfwWindowShouldClose(window))
     {
         // FPS
@@ -166,6 +183,7 @@ int run(GLFWwindow* window)
 		tireModel.draw();
 		rimModel.draw();
 
+
         // RENDER SCENE
 		//Framebuffer::Default();
 		screenVFX.Bind();
@@ -190,15 +208,45 @@ int run(GLFWwindow* window)
 		shader.setMat4f("model", floorMat);
 		floor.draw();
 		
+		emitShader.bind();
+		emitShader.setMat4f("pv_mat", pv_mat);
+		emitShader.setVec3f("color", 1, 0, 0);
+		emitShader.setMat4f("model", sphere_mat);
+		sphere.draw();
+
 		skyShader.bind();
-		skyShader.setMat4f("pv_transform", pv_mat);
+		skyShader.setMat4f("pv_transform", glm::inverse(pv_mat));
 		sky.draw();
 
+		// Blur
+		blurShader.bind();
+		blurHorizontal.Bind();
+		blurVertical.Bind();
+
+		for (unsigned int i = 0; i < amount; i++)
+		{
+			ping_pongFrame[horizontal]->Bind();
+
+			blurShader.setInt("horizontal", horizontal);
+			
+			if (first_iteration)
+				bloomTexture->bind();
+			else
+				ping_pong[!horizontal]->bind();
+
+			screenPlane.draw();
+
+			horizontal = !horizontal;
+			if (first_iteration)
+				first_iteration = false;
+		}
+		first_iteration = true;
 		// VFX
 		Framebuffer::Default();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		vfxShader.bind();
-		screenTexture->bind();
+		screenTexture->bind(0);
+		ping_pong[!horizontal]->bind(1);
 		screenPlane.draw();
         
 		

@@ -1,5 +1,7 @@
 #version 430
-out vec4 out_color;
+layout (location = 0) out vec4 out_color;
+layout (location = 1) out vec4 bloom_color;
+
 
 in vec2 uv_coord;
 in vec3 normal;
@@ -58,12 +60,11 @@ void main()
     
     // Final color
     vec3 obj_color = ambient + (1.0 - shadow) * Lo;
-    
-    // HDR
-    obj_color = obj_color / (obj_color + vec3(1.0f));
-    
-    // Gamma Correction
-    obj_color = pow(obj_color, vec3(1.0/2.2));
 
+    // check whether fragment output is higher than threshold, if so output as brightness color
     out_color = vec4(obj_color, 1);
+
+    // BLOOM
+    float brightness = out_color.r * 0.2126 +  out_color.g * 0.7152 + out_color.b * 0.0722;
+    bloom_color = vec4(out_color.rgb * brightness, 1.0);
 }
