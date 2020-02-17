@@ -1,5 +1,4 @@
 #include "main.h"
-#include "Model.hpp"
 #include <GLFW/glfw3.h>
 #include <math.h>
 
@@ -9,8 +8,8 @@
 #define SHADOW_RES 1024
 #define SHADOW_SIZE 1.0f
 
-glm::vec3 camPos (8.0f, 3.0f, 8.0f);
-Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 231.499954f, -22.0f);
+glm::vec3 camPos (-8.0f, 3.0f, -8.0f);
+Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 45.0f, -12.0f);
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 // timing
@@ -50,7 +49,7 @@ int main(int argc, char** argv)
 
 int run(GLFWwindow* window)
 {
-    glm::vec3 backgroundColor(0.2f, 0.5f, 1.0f);
+    glm::vec3 backgroundColor(0.1f, 0.1f, 0.1f);
 
     // SHADERS
 	Shader emitShader("res/Shaders/unlit.vert", "res/Shaders/unlit.frag");
@@ -153,7 +152,7 @@ int run(GLFWwindow* window)
 		emitShader.setMat4f("model", modelMat);
         
         glBindVertexArray(model);
-        glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, nullptr);
+        glDrawElements(GL_TRIANGLES, (GLsizei) index_count, GL_UNSIGNED_INT, nullptr);
 
 		// PRESENT THE FRAME
         glfwSwapBuffers(window);
