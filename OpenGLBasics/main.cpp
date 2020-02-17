@@ -9,8 +9,8 @@
 #define SHADOW_RES 1024
 #define SHADOW_SIZE 1.0f
 
-glm::vec3 camPos (2.0f, 0.0f, 2.0f);
-Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 231.499954f, 0.0f);
+glm::vec3 camPos (8.0f, 3.0f, 8.0f);
+Camera cam(camPos, { 0.0f, 1.0f, 0.0f }, 231.499954f, -22.0f);
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 // timing
@@ -50,113 +50,89 @@ int main(int argc, char** argv)
 
 int run(GLFWwindow* window)
 {
-
-    glm::vec3 sunDir = glm::vec3(1, 1, 1);
-	glm::vec3 sunPos = sunDir * 4.0f;
+    glm::vec3 backgroundColor(0.2f, 0.5f, 1.0f);
 
     // SHADERS
-    Shader shader("res\\Shaders\\lit_normal.vert", "res\\Shaders\\lit_normal.frag");
-    shader.bind();
-    shader.setInt("diffuseMap", 0);
-	shader.setInt("normals_map", 1);
-	shader.setInt("shadow_map", 2);
-
-	Shader emitShader("res\\Shaders\\unlit.vert", "res\\Shaders\\unlit.frag");
+	Shader emitShader("res/Shaders/unlit.vert", "res/Shaders/unlit.frag");
 	emitShader.bind();
-	emitShader.setFloat("intensity", 2.0f);
-
-	Shader skyShader("res\\Shaders\\skybox.vert","res\\Shaders\\skybox.frag");
-	skyShader.bind();
-	skyShader.setInt("diffuse", 0);
-
-	Shader vfxShader("res\\Shaders\\vfx.vert","res\\Shaders\\vfx.frag");
-	vfxShader.bind();
-	vfxShader.setInt("screen", 0);
-	vfxShader.setInt("bloomScreen", 1);
-
-	Shader blurShader("res\\Shaders\\blur.vert", "res\\Shaders\\blur.frag");
-	blurShader.bind();
-	blurShader.setInt("in_image", 0);
-
-	Shader shadowMapShader("res\\Shaders\\shadow_mapping.vert", "res\\Shaders\\shadow_mapping.frag");
-	// TEXTURES
-	Texture2D* shadowTexture = new Texture2D("", false, SHADOW_RES, SHADOW_RES, true);
-	Texture2D* screenTexture = new Texture2D("", false, WIDTH, HEIGHT);
-	Texture2D* bloomTexture = new Texture2D("", false, WIDTH, HEIGHT);
-	Texture2D* blurHTexture = new Texture2D("", false, WIDTH, HEIGHT);
-	Texture2D* blurVTexture = new Texture2D("", false, WIDTH, HEIGHT);
-	Texture2D* tireTexD =  new Texture2D("res\\Textures\\Tire_df.png");
-	Texture2D* tireTexN =  new Texture2D("res\\Models\\Wheel\\Tire_LP_nm.png");
-	Texture2D* rimTexD =  new Texture2D("res\\Textures\\Rim_df.png");
-	Texture2D* rimTexN =  new Texture2D("res\\Models\\Wheel\\Rim_LP_nm.png");
-	Texture2D* floorTexD =  new Texture2D("res\\Textures\\RedBrick\\brick_df.png");
-	Texture2D* floorTexN =  new Texture2D("res\\Textures\\RedBrick\\brick_nm.png");
-	Cubemap* skyTex = new Cubemap({
-			"res/textures/cubemaps/hw_alps/alps_rt.tga",
-			"res/textures/cubemaps/hw_alps/alps_lf.tga",
-			"res/textures/cubemaps/hw_alps/alps_up.tga",
-			"res/textures/cubemaps/hw_alps/alps_dn.tga",
-			"res/textures/cubemaps/hw_alps/alps_ft.tga",
-			"res/textures/cubemaps/hw_alps/alps_bk.tga",
-		});
-
-	// MATERIALS
-	Material tireMat = { tireTexD, tireTexN, 0.5f, 27.0f};
-    std::vector<Material> tireMats= { tireMat };
-	Material rimMat = { rimTexD, rimTexN, 1.5f, 256.0f};
-	std::vector<Material> rimMats = { rimMat };
-	Material floorMaterial = { floorTexD, floorTexN, 0.0f, 12.0f};
-	std::vector<Material> floorMaterials = { floorMaterial };
-	Material skyMaterial = { skyTex, nullptr, 0, 0 };
-	std::vector<Material> skyMaterials = { skyMaterial };
-	
-	// MODELS
-    Model tireModel("res\\Models\\Wheel\\Tire_LP.obj", &tireMats);
-	Model rimModel("res\\Models\\Wheel\\Rim_LP.obj", &rimMats);
-	Model floor("res\\Models\\plane.obj", &floorMaterials);
-	Model sky("res\\Models\\cube.obj", &skyMaterials);
-	Model screenPlane("res\\Models\\planeZ.obj", nullptr);
-	Model sphere("res\\Models\\sphere_lp.obj", nullptr);
+    emitShader.setVec3f("color", 0.01f, 0, 0.5f);
 
 	// TRANSFORMS
-	glm::mat4 orthographic = glm::ortho(-SHADOW_SIZE, SHADOW_SIZE, -SHADOW_SIZE, SHADOW_SIZE, 5.0f, 19.0f);
+    float scale = 1.0f;
+    glm::vec3 position(0.0f, 0.0f, 0.0f);
     glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / HEIGHT, 0.1f, 100.0f);
-	
-	glm::mat4 floorMat = glm::translate(glm::vec3(0, -0.8f, 0)) * glm::scale(glm::vec3(1.0f, 1.0f, 1.0f) * 10.0f);
-	glm::mat3 floorNMat = glm::transpose(glm::inverse(glm::mat3(floorMat)));
-    
-	glm::mat4 sphere_mat = glm::translate(glm::vec3(2, 1, 0)) * glm::scale(glm::vec3(1.0f, 1.0f, 1.0f) * 0.5f);
+	glm::mat4 modelMat = glm::translate(position) * glm::scale(glm::vec3(1.0f, 1.0f, 1.0f) * scale);
 
-	glm::mat4 modelMat = glm::rotate(glm::radians(0.0f), glm::vec3(0, 1, 0));
-    glm::mat3 normalMat = glm::transpose(glm::inverse(glm::mat3(modelMat)));
-	
-	glm::mat4 sunView = glm::lookAt(sunPos, glm::vec3(0, 0, 0),	glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 lightSpace_mat = orthographic * sunView;
-	glm::mat4 transform;
-	float angle = 0.0f;
-	bool horizontal = true;
-	bool first_iteration = true;
-	int amount = 20;
+    // MODEL
+    float vertices[] =
+    {
+        -1.0f, -1.0f, 1.0f,
+         1.0f, -1.0f, 1.0f,
+         1.0f,  1.0f, 1.0f,
+        -1.0f,  1.0f, 1.0f,
 
-	// set shader's uniforms
-	shadowMapShader.bind();
-	shadowMapShader.setMat4f("lightspace_mat", lightSpace_mat);
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+    };
 
-	shader.bind();
-	shader.setMat4f("lightspace_mat", lightSpace_mat);
-	shader.setVec3f("lightPos", sunPos.x, sunPos.y, sunPos.z);
-    
-	// FRAMEBUFFERS
-	Framebuffer shadowMap(shadowTexture, nullptr, true);
-	Framebuffer screenVFX(screenTexture, bloomTexture);
-	Framebuffer blurVertical(blurVTexture);
-	Framebuffer blurHorizontal(blurHTexture);
+    uint32 indices[] =
+    {
+        // -Z face
+        0, 1, 2,
+        0, 2, 3,
 
-	Texture* ping_pong[] = { blurHTexture, blurVTexture };
-	Framebuffer* ping_pongFrame[] = { &blurHorizontal, &blurVertical };
+        // +Z face
+        4, 6, 5,
+        4, 7, 6,
+
+        // -X face
+        4, 0, 3,
+        4, 3, 7,
+        
+        //// +X face
+        5, 2, 1,
+        5, 6, 2,
+        
+        //// -Y face
+        0, 4, 5,
+        0, 5, 1,
+        
+        //// +Y face
+        2, 6, 7,
+        2, 7, 3,
+    };
+
+
+    size_t index_count = sizeof(indices) / sizeof(uint32);
+
+    uint32 model;
+    {
+        uint32 buffers[2];
+        // Generate the buffers
+        glGenVertexArrays(1, &model);
+        glGenBuffers(2, buffers);
+
+        // Bind the Array Object
+        glBindVertexArray(model);
+
+
+        // Bind Vertex Buffer to the Array Object
+        glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
+        // Reserve memory and Send data to the Vertex Buffer
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers[1]);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    }
 
 	std::cout.flush();
-	
+    glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, 1.0f);
+
     while (!glfwWindowShouldClose(window))
     {
         // FPS
@@ -164,92 +140,21 @@ int run(GLFWwindow* window)
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         
-		// LOGIC
-		angle += 0.5f;
-		angle = (angle > 360.0f) ? 0.0f : angle;
-        camPos = cam.Position;
-		modelMat = glm::rotate(glm::radians(angle), glm::vec3(1, 0, 0));
-		
-		// SHADOW MAP
-		shadowMap.Bind();
-		glClear(GL_DEPTH_BUFFER_BIT);
-		glViewport(0, 0, SHADOW_RES, SHADOW_RES);
-		glCullFace(GL_FRONT);
-
-
-		shadowMapShader.bind();
-		shadowMapShader.setMat4f("model", modelMat);
-
-		tireModel.draw();
-		rimModel.draw();
-
-
         // RENDER SCENE
-		//Framebuffer::Default();
-		screenVFX.Bind();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glViewport(0, 0, WIDTH, HEIGHT);
-		glCullFace(GL_BACK);
 		
 		
 		auto pv_mat = perspective * cam.GetViewMatrix();
 		
 		
-		shader.bind();
-		shader.setVec3f("viewPos", camPos.x, camPos.y, camPos.z);
-		shader.setMat4f("pv_mat", pv_mat);
-		
-		shadowTexture->bind(2);
-
-		shader.setMat4f("model", modelMat);
-		tireModel.draw();
-		rimModel.draw();
-
-		shader.setMat4f("model", floorMat);
-		floor.draw();
-		
 		emitShader.bind();
 		emitShader.setMat4f("pv_mat", pv_mat);
-		emitShader.setVec3f("color", 1, 0, 0);
-		emitShader.setMat4f("model", sphere_mat);
-		sphere.draw();
-
-		skyShader.bind();
-		skyShader.setMat4f("pv_transform", glm::inverse(pv_mat));
-		sky.draw();
-
-		// Blur
-		blurShader.bind();
-		blurHorizontal.Bind();
-		blurVertical.Bind();
-
-		for (unsigned int i = 0; i < amount; i++)
-		{
-			ping_pongFrame[horizontal]->Bind();
-
-			blurShader.setInt("horizontal", horizontal);
-			
-			if (first_iteration)
-				bloomTexture->bind();
-			else
-				ping_pong[!horizontal]->bind();
-
-			screenPlane.draw();
-
-			horizontal = !horizontal;
-			if (first_iteration)
-				first_iteration = false;
-		}
-		first_iteration = true;
-		// VFX
-		Framebuffer::Default();
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		vfxShader.bind();
-		screenTexture->bind(0);
-		ping_pong[!horizontal]->bind(1);
-		screenPlane.draw();
-        
 		
+		emitShader.setMat4f("model", modelMat);
+        
+        glBindVertexArray(model);
+        glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, nullptr);
+
 		// PRESENT THE FRAME
         glfwSwapBuffers(window);
 
